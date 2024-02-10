@@ -17,6 +17,8 @@ pub mod vault {
             max_balance,
             vault_info.bump
         );
+
+        vault_info.is_initialized = true;
         Ok(())
     }
 
@@ -50,7 +52,8 @@ pub struct Initialize<'info> {
         payer = provider,
         space = 8 + VaultInfo::LEN,
         seeds = [b"SOLvault"],
-        bump
+        bump,
+        constraint = vault_info.is_initialized == false
     )]
     pub vault_info: Account<'info, VaultInfo>,
     #[account(mut)]
@@ -60,7 +63,10 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = vault_info.is_initialized == true
+    )]
     pub vault_info: Account<'info, VaultInfo>,
     #[account(mut)]
     pub depositor: Signer<'info>,
@@ -69,13 +75,14 @@ pub struct Deposit<'info> {
 
 #[account]
 pub struct VaultInfo {
-    // pub accepted_token: Pubkey,
+    // pub accepted_token: Pubkey, for USDC mint address for example
     pub max_balance: u64,
     pub bump: u8,
+    pub is_initialized: bool,
 }
 
 impl VaultInfo {
-    pub const LEN: usize = 8 + 1;
+    pub const LEN: usize = 8 + 1 + 1;
 }
 
 #[error_code]
