@@ -1,4 +1,8 @@
 use anchor_lang::{prelude::*, system_program};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{initialize_mint, mint_to, InitializeMint, Mint, MintTo, Token, TokenAccount},
+};
 
 declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
 
@@ -8,7 +12,17 @@ pub mod vault {
 
     /// Initializes a new vault and sets the vault configuration.
     /// `max_balance` is expected to be in lamports
-    pub fn initialize(ctx: Context<Initialize>, max_balance: u64) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, max_balance: u64, decimals: u8) -> Result<()> {
+        // Create new token mint
+        let cpi_context = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            InitializeMint {
+                mint: ctx.accounts.mint_account.to_account_info(),
+                rent: ctx.accounts.rent.to_account_info(),
+            },
+        );
+        initialize_mint(cpi_context, decimals, ctx.program_id, Some(ctx.program_id))?;
+
         let vault_info = &mut ctx.accounts.vault_info;
         vault_info.max_balance = max_balance;
         vault_info.bump = ctx.bumps.vault_info;
@@ -46,6 +60,7 @@ pub mod vault {
 }
 
 #[derive(Accounts)]
+// #[instruction(params: InitTokenParams)]
 pub struct Initialize<'info> {
     #[account(
         init,
@@ -58,7 +73,25 @@ pub struct Initialize<'info> {
     pub vault_info: Account<'info, VaultInfo>,
     #[account(mut)]
     pub provider: Signer<'info>,
+    #[account(
+        init,
+        seeds = [b"SOLmint"],
+        bump,
+        payer = provider,
+        space = Mint::LEN,
+    )]
+    pub mint_account: Account<'info, Mint>,
+    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+pub struct InitTokenParams {
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub decimals: u8,
 }
 
 #[derive(Accounts)]

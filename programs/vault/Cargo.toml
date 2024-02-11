@@ -19,3 +19,4 @@ default = []
 anchor-lang = "0.29.0"
 solana-program = "=1.17.0"
 ahash = "=0.8.6"
+anchor-spl = "0.29.0"
