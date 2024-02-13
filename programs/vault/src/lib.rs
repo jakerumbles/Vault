@@ -1,6 +1,11 @@
 use anchor_lang::{prelude::*, system_program};
 use anchor_spl::{
-    associated_token::AssociatedToken,
+    // associated_token::AssociatedToken,
+    metadata::mpl_token_metadata::{
+        accounts::Metadata,
+        instructions::CreateV1CpiBuilder,
+        types::{PrintSupply, TokenStandard},
+    },
     token::{initialize_mint, mint_to, InitializeMint, Mint, MintTo, Token, TokenAccount},
 };
 
@@ -13,26 +18,20 @@ pub mod vault {
     /// Initializes a new vault and sets the vault configuration.
     /// `max_balance` is expected to be in lamports
     pub fn initialize(ctx: Context<Initialize>, max_balance: u64, decimals: u8) -> Result<()> {
-        // Create new token mint
-        let cpi_context = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            InitializeMint {
-                mint: ctx.accounts.mint_account.to_account_info(),
-                rent: ctx.accounts.rent.to_account_info(),
-            },
-        );
-        initialize_mint(cpi_context, decimals, ctx.program_id, Some(ctx.program_id))?;
+        let create_cpi = CreateV1CpiBuilder::new(&ctx.accounts.metadata_account.to_account_info());
+        create_cpi.invoke()?;
 
         let vault_info = &mut ctx.accounts.vault_info;
         vault_info.max_balance = max_balance;
         vault_info.bump = ctx.bumps.vault_info;
+        vault_info.is_initialized = true;
+
         msg!(
             "Vault initialized. Max balance: {} SOL, bump: {}",
             max_balance,
             vault_info.bump
         );
 
-        vault_info.is_initialized = true;
         Ok(())
     }
 
@@ -60,11 +59,10 @@ pub mod vault {
 }
 
 #[derive(Accounts)]
-// #[instruction(params: InitTokenParams)]
 pub struct Initialize<'info> {
     #[account(
         init,
-        payer = provider,
+        payer = payer,
         space = 8 + VaultInfo::LEN,
         seeds = [b"SOLvault"],
         bump,
@@ -72,26 +70,27 @@ pub struct Initialize<'info> {
     )]
     pub vault_info: Account<'info, VaultInfo>,
     #[account(mut)]
-    pub provider: Signer<'info>,
+    pub payer: Signer<'info>,
+    // Create mint account
+    // Same PDA as address of the account and mint/freeze authority
     #[account(
         init,
-        seeds = [b"SOLmint"],
+        seeds = [b"mint"],
         bump,
-        payer = provider,
-        space = Mint::LEN,
+        payer = payer,
+        mint::decimals = 9,
+        mint::authority = mint_account.key(),
+        mint::freeze_authority = mint_account.key(),
+
     )]
     pub mint_account: Account<'info, Mint>,
+    /// CHECK: Address validated using constraint
+    #[account(mut)]
+    pub metadata_account: UncheckedAccount<'info>,
+
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct InitTokenParams {
-    pub name: String,
-    pub symbol: String,
-    pub uri: String,
-    pub decimals: u8,
 }
 
 #[derive(Accounts)]
