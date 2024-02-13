@@ -23,9 +23,10 @@ describe("vault", () => {
   );
 
   const metadata = {
-    name: "Solana Gold",
-    symbol: "GOLDSOL",
+    name: "GEM Vault Receipt",
+    symbol: "vGEM",
     uri: "https://raw.githubusercontent.com/solana-developers/program-examples/new-examples/tokens/tokens/.assets/spl-token.json",
+    decimals: 9,
   };
 
   const tokenProgram = new PublicKey(
@@ -49,23 +50,37 @@ describe("vault", () => {
     );
 
     const maxBalance = new BN(10 * LAMPORTS_PER_SOL);
-    const decimals = 9;
 
-    const tx = await program.methods
-      .initialize(maxBalance, decimals)
+    let tx = await // .signers([mint])
+    program.methods
+      .initialize(maxBalance, metadata)
       .accounts({
+        metadata: metadataAddress,
         vaultInfo: vaultInfoPDA,
-        provider: provider.publicKey,
-        mintAccount: mintPDA,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        payer: provider.publicKey,
+        mint: mintPDA,
+        // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: tokenProgram,
+        // tokenProgram: tokenProgram,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       })
-      // .signers([mint])
-      .rpc();
+      .transaction();
+
+    let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+      .blockhash;
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = provider.wallet.publicKey;
+    provider.wallet.signTransaction(tx);
+
+    const signature = await provider.connection.sendRawTransaction(
+      tx.serialize(),
+      {
+        skipPreflight: true,
+      }
+    );
 
     console.log(
-      `View transaction: https://explorer.solana.com/tx/${tx}?cluster=custom`
+      `View transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
     );
   });
 
