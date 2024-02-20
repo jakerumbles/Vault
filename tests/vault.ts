@@ -23,7 +23,7 @@ describe("vault", () => {
   );
 
   const metadata = {
-    name: "GEM Vault Receipt",
+    name: "GEM Vault LP Token",
     symbol: "vGEM",
     uri: "https://raw.githubusercontent.com/solana-developers/program-examples/new-examples/tokens/tokens/.assets/spl-token.json",
     decimals: 9,

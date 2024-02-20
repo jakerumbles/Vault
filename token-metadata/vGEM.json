@@ -1,0 +1,6 @@
+{
+    "name": "GEM Vault LP Token",
+    "symbol": "vGEM",
+    "description": "Receipt token for SOL deposits into the SOL GEMS DAO vault",
+    "image": "https://www.gemsdao.io/images/Card.png"
+}
