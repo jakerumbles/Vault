@@ -14,6 +14,7 @@ pub mod vault {
 
     /// Initializes a new vault and sets the vault configuration.
     /// `max_balance` is expected to be in lamports
+
     pub fn initialize(
         ctx: Context<Initialize>,
         max_balance: u64,
@@ -21,18 +22,8 @@ pub mod vault {
     ) -> Result<()> {
         msg!("Initializing vault...");
 
-        // let seeds = &["mint".as_bytes(), &[*ctx.bumps.get("mint").unwrap()]];
-        // let signer = [&seeds[..]];
-
-        // let account_info = vec![
-        //     ctx.accounts.metadata.to_account_info(),
-        //     ctx.accounts.mint.to_account_info(),
-        //     ctx.accounts.payer.to_account_info(),
-        //     ctx.accounts.token_metadata_program.to_account_info(),
-        //     ctx.accounts.token_program.to_account_info(),
-        //     ctx.accounts.system_program.to_account_info(),
-        //     ctx.accounts.rent.to_account_info(),
-        // ];
+        let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
+        let signer_seeds = &[&seeds[..]];
 
         let cpi_context = CpiContext::new(
             ctx.accounts.token_metadata_program.to_account_info(),
@@ -40,17 +31,18 @@ pub mod vault {
                 metadata: ctx.accounts.metadata.to_account_info(),
                 mint: ctx.accounts.mint.to_account_info(),
                 // Get the account info for the current program
-                mint_authority: ctx.accounts.payer.to_account_info(),
+                mint_authority: ctx.accounts.vault_info.to_account_info(),
                 payer: ctx.accounts.payer.to_account_info(),
-                update_authority: ctx.accounts.payer.to_account_info(),
+                update_authority: ctx.accounts.vault_info.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
                 rent: ctx.accounts.rent.to_account_info(),
             },
-        );
+        )
+        .with_signer(signer_seeds);
 
         let data: DataV2 = DataV2 {
             name: metadata.name,
-            symbol: metadata.symbol,
+            symbol: metadata.symbol.clone(),
             uri: metadata.uri,
             seller_fee_basis_points: 0,
             creators: None,
@@ -58,15 +50,9 @@ pub mod vault {
             uses: None,
         };
 
-        // create_metadata_accounts_v3(cpi_context, data, true, true, None)?;
+        create_metadata_accounts_v3(cpi_context, data, true, true, None)?;
 
-        // invoke_signed(
-
-        //     account_info.as_slice(),
-        //     &signer,
-        // )?;
-
-        // msg!("Token mint created successfully.");
+        msg!("{} token mint created successfully.", metadata.symbol);
 
         let vault_info = &mut ctx.accounts.vault_info;
         vault_info.max_balance = max_balance;
@@ -89,7 +75,11 @@ pub mod vault {
         if new_balance > vault_info.max_balance {
             return Err(ErrorCode::DepositAmountTooLarge.into());
         }
-        msg!("Depositing {} lamports into the vault...", amount);
+        msg!(
+            "Depositing {} lamports into the vault from {}",
+            amount,
+            ctx.accounts.depositor.key()
+        );
 
         // Transfer the SOL from the depositor to the vault
         let cpi_context = CpiContext::new(
@@ -106,9 +96,9 @@ pub mod vault {
 }
 
 #[derive(Accounts)]
-#[instruction(
-    params: InitTokenParams
-)]
+// #[instruction(
+//     params: InitTokenParams
+// )]
 pub struct Initialize<'info> {
     /// CHECK: New Metaplex Account being created
     #[account(mut)]
@@ -131,8 +121,8 @@ pub struct Initialize<'info> {
         seeds = [b"mint"],
         bump,
         payer = payer,
-        mint::decimals = params.decimals,
-        mint::authority = mint,
+        mint::decimals = 9,
+        mint::authority = vault_info,
     )]
     pub mint: Account<'info, Mint>,
     pub rent: Sysvar<'info, Rent>,

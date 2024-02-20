@@ -16,3 +16,8 @@ wallet = "/Users/jake/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test.validator]
+[[test.genesis]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+program = "/Users/jake/Github/mpl-token-metadata/programs/.bin/token_metadata.so"

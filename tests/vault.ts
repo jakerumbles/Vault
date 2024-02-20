@@ -51,33 +51,48 @@ describe("vault", () => {
 
     const maxBalance = new BN(10 * LAMPORTS_PER_SOL);
 
-    let tx = await // .signers([mint])
-    program.methods
+    let signature = await program.methods
       .initialize(maxBalance, metadata)
       .accounts({
         metadata: metadataAddress,
         vaultInfo: vaultInfoPDA,
         payer: provider.publicKey,
         mint: mintPDA,
-        // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
-        // tokenProgram: tokenProgram,
+        tokenProgram: tokenProgram,
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       })
-      .transaction();
+      .rpc();
 
-    let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
-      .blockhash;
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = provider.wallet.publicKey;
-    provider.wallet.signTransaction(tx);
+    // provider.opts.skipPreflight = true;
+    // let tx = await // .signers([mint])
+    // program.methods
+    //   .initialize(maxBalance, metadata)
+    //   .accounts({
+    //     metadata: metadataAddress,
+    //     vaultInfo: vaultInfoPDA,
+    //     payer: provider.publicKey,
+    //     mint: mintPDA,
+    //     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: tokenProgram,
+    //     tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+    //   })
+    //   .transaction();
 
-    const signature = await provider.connection.sendRawTransaction(
-      tx.serialize(),
-      {
-        skipPreflight: true,
-      }
-    );
+    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+    //   .blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = provider.wallet.publicKey;
+    // provider.wallet.signTransaction(tx);
+
+    // const signature = await provider.connection.sendRawTransaction(
+    //   tx.serialize(),
+    //   {
+    //     skipPreflight: true,
+    //   }
+    // );
 
     console.log(
       `View transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
