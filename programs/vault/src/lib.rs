@@ -1,7 +1,8 @@
 use anchor_lang::{prelude::*, solana_program::program::invoke_signed, system_program};
 use anchor_spl::{
+    associated_token::AssociatedToken,
     metadata::create_metadata_accounts_v3,
-    token::{initialize_mint, mint_to, InitializeMint, Mint, MintTo, Token, TokenAccount},
+    token::{mint_to, InitializeMint, Mint, MintTo, Token, TokenAccount},
 };
 
 declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
@@ -9,12 +10,13 @@ declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
 #[program]
 pub mod vault {
     use anchor_spl::metadata::{mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3};
+    use solana_program::native_token::LAMPORTS_PER_SOL;
 
     use super::*;
 
     /// Initializes a new vault and sets the vault configuration.
-    /// `max_balance` is expected to be in lamports
-
+    /// `max_balance` is expected to be in lamports.
+    /// Also creates a new token mint and initializes the metadata for the token
     pub fn initialize(
         ctx: Context<Initialize>,
         max_balance: u64,
@@ -60,7 +62,7 @@ pub mod vault {
         vault_info.is_initialized = true;
 
         msg!(
-            "Vault initialized. Max balance: {} SOL, bump: {}",
+            "Vault initialized. Max balance: {} lamports, bump: {}",
             max_balance,
             vault_info.bump
         );
@@ -68,28 +70,51 @@ pub mod vault {
         Ok(())
     }
 
-    /// Deposits SOL into the vault
+    /// Deposits SOL into the vault and mints LP tokens to the depositor.
+    /// TODO: Make sure decimals are handled with `amount`
     pub fn deposit_sol(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         let vault_info = &ctx.accounts.vault_info;
         let new_balance = vault_info.get_lamports() + amount;
         if new_balance > vault_info.max_balance {
             return Err(ErrorCode::DepositAmountTooLarge.into());
         }
-        msg!(
-            "Depositing {} lamports into the vault from {}",
-            amount,
-            ctx.accounts.depositor.key()
-        );
 
         // Transfer the SOL from the depositor to the vault
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
-                from: ctx.accounts.depositor.to_account_info(),
+                from: ctx.accounts.payer.to_account_info(),
                 to: ctx.accounts.vault_info.to_account_info(),
             },
         );
         system_program::transfer(cpi_context, amount)?;
+
+        msg!(
+            "Deposited {} lamports into the vault from {}",
+            amount,
+            ctx.accounts.payer.key()
+        );
+
+        // Mint LP tokens to the depositor
+        let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
+        let signer_seeds = &[&seeds[..]];
+        let cpi_context = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            MintTo {
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.destination.to_account_info(),
+                authority: ctx.accounts.vault_info.to_account_info(),
+            },
+            signer_seeds,
+        );
+
+        mint_to(cpi_context, amount)?;
+
+        msg!(
+            "Minted {} LP tokens to {}",
+            amount,
+            ctx.accounts.payer.key()
+        );
 
         Ok(())
     }
@@ -137,12 +162,30 @@ pub struct Initialize<'info> {
 pub struct Deposit<'info> {
     #[account(
         mut,
+        seeds = [b"SOLvault"],
+        bump,
         constraint = vault_info.is_initialized == true
     )]
     pub vault_info: Account<'info, VaultInfo>,
+    #[account(
+        mut,
+        seeds = [b"mint"],
+        bump,
+        mint::authority = vault_info,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = payer,
+    )]
+    pub destination: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub depositor: Signer<'info>,
+    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+    pub token_program: Program<'info, Token>,
+    // pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[account]
