@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::program::invoke_signed, system_pro
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::create_metadata_accounts_v3,
-    token::{mint_to, InitializeMint, Mint, MintTo, Token, TokenAccount},
+    token::{burn, mint_to, Burn, Mint, MintTo, Token, TokenAccount},
 };
 
 declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
@@ -111,7 +111,62 @@ pub mod vault {
         mint_to(cpi_context, amount)?;
 
         msg!(
-            "Minted {} LP tokens to {}",
+            "Minted {} LP tokens to {} for {}",
+            amount,
+            ctx.accounts.destination.key(),
+            ctx.accounts.payer.key()
+        );
+
+        Ok(())
+    }
+
+    /// Withdraws LP tokens from the depositor and burns them, transferring SOL to the depositor.
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        // Verify non-zero LP token balance
+        let caller_balance = ctx.accounts.burn_ata.amount;
+        if caller_balance == 0 {
+            return Err(ErrorCode::NoBalance.into());
+        }
+
+        // Verify LP token balance is greater than or equal to the withdrawal amount
+        if caller_balance < amount {
+            return Err(ErrorCode::WithdrawAmountTooLarge.into());
+        }
+
+        // Burn LP tokens
+        let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
+        let signer_seeds = &[&seeds[..]];
+        let burn_cpi_context = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Burn {
+                mint: ctx.accounts.mint.to_account_info(),
+                from: ctx.accounts.burn_ata.to_account_info(),
+                authority: ctx.accounts.vault_info.to_account_info(),
+            },
+            signer_seeds,
+        );
+
+        burn(burn_cpi_context, amount)?;
+
+        msg!(
+            "Burned {} LP tokens from {} for {}",
+            amount,
+            ctx.accounts.burn_ata.key(),
+            ctx.accounts.payer.key()
+        );
+
+        // Transfer the SOL back to the depositor
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.vault_info.to_account_info(),
+                to: ctx.accounts.payer.to_account_info(),
+            },
+        );
+        system_program::transfer(cpi_context, amount)?;
+
+        msg!(
+            "Transferred {} lamports back to {}",
             amount,
             ctx.accounts.payer.key()
         );
@@ -183,9 +238,35 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
     pub token_program: Program<'info, Token>,
-    // pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(
+        mut,
+        seeds = [b"SOLvault"],
+        bump,
+        constraint = vault_info.is_initialized == true
+    )]
+    pub vault_info: Account<'info, VaultInfo>,
+    #[account(
+        mut,
+        seeds = [b"mint"],
+        bump,
+        mint::authority = vault_info,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = payer,
+    )]
+    pub burn_ata: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[account]
@@ -204,8 +285,10 @@ impl VaultInfo {
 pub enum ErrorCode {
     #[msg("Deposit amount too large. Would cause vault to exceed max balance.")]
     DepositAmountTooLarge,
-    #[msg("Failed to invoke CreateV1CPI")]
-    CreateV1CPIFailure,
+    #[msg("No LP tokens to burn for withdrawal.")]
+    NoBalance,
+    #[msg("Withdraw amount is greater than callers LP token balance.")]
+    WithdrawAmountTooLarge,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]

@@ -158,7 +158,6 @@ describe("vault", () => {
         destination: associatedTokenAccount,
         payer: provider.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
@@ -221,7 +220,6 @@ describe("vault", () => {
         destination: associatedTokenAccount,
         payer: provider.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
