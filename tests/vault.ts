@@ -12,6 +12,7 @@ import {
   MINT_SIZE,
   ACCOUNT_SIZE,
 } from "@solana/spl-token";
+import { assert } from "chai";
 
 describe("vault", () => {
   // Configure the client to use the local cluster.
@@ -108,7 +109,15 @@ describe("vault", () => {
     );
   });
 
-  it("Deposits 1.5 SOL", async () => {
+  it("Deposits 1.5 SOL twice", async () => {
+    // Get the starting SOL balance of the vault_info account before deposit
+    const beforeDepositBalance = await provider.connection.getBalance(
+      vaultInfoPDA
+    );
+    console.log(
+      `Before deposit balance: ${beforeDepositBalance / LAMPORTS_PER_SOL}`
+    );
+
     // Get the ATA for a token and the account that we want to own the ATA (but it might not existing on the SOL network yet)
     const associatedTokenAccount = await getAssociatedTokenAddress(
       mintPDA,
@@ -133,9 +142,28 @@ describe("vault", () => {
       `CREATEATA transaction: https://explorer.solana.com/tx/${res}?cluster=custom`
     );
 
-    const amount = new BN(1.5 * LAMPORTS_PER_SOL);
+    // Verify 0 balance for new vGEM ATA
+    const balance = await provider.connection.getTokenAccountBalance(
+      associatedTokenAccount
+    );
+    assert(Number(balance.value.amount) === 0);
 
-    // const signature = await program.methods
+    const depositAmount = new BN(1.5 * LAMPORTS_PER_SOL);
+
+    const signature = await program.methods
+      .depositSol(depositAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        mint: mintPDA,
+        destination: associatedTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    // const tx = await program.methods
     //   .depositSol(amount)
     //   .accounts({
     //     vaultInfo: vaultInfoPDA,
@@ -146,10 +174,47 @@ describe("vault", () => {
     //     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
     //     tokenProgram: TOKEN_PROGRAM_ID,
     //   })
-    //   .rpc();
+    //   .transaction();
 
-    const tx = await program.methods
-      .depositSol(amount)
+    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+    //   .blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = provider.wallet.publicKey;
+    // provider.wallet.signTransaction(tx);
+
+    // const signature = await provider.connection.sendRawTransaction(
+    //   tx.serialize(),
+    //   {
+    //     skipPreflight: true,
+    //   }
+    // );
+
+    console.log(
+      `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
+
+    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    const afterDepositBalSOL = await provider.connection.getBalance(
+      vaultInfoPDA
+    );
+
+    console.log(
+      `After deposit balance for ${vaultInfoPDA.toBase58()}: ${
+        afterDepositBalSOL / LAMPORTS_PER_SOL
+      }`
+    );
+
+    assert(afterDepositBalSOL === beforeDepositBalance + Number(depositAmount));
+
+    // Verify updated balance for vGEM ATA
+    const afterBalanceATA = await provider.connection.getTokenAccountBalance(
+      associatedTokenAccount
+    );
+    assert(Number(afterBalanceATA.value.amount) === Number(depositAmount));
+
+    // Deposit a 2nd time
+    const signature2 = await program.methods
+      .depositSol(depositAmount)
       .accounts({
         vaultInfo: vaultInfoPDA,
         mint: mintPDA,
@@ -159,23 +224,26 @@ describe("vault", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .transaction();
-
-    let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
-      .blockhash;
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = provider.wallet.publicKey;
-    provider.wallet.signTransaction(tx);
-
-    const signature = await provider.connection.sendRawTransaction(
-      tx.serialize(),
-      {
-        skipPreflight: true,
-      }
-    );
+      .rpc();
 
     console.log(
-      `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+      `#2 DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
+
+    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    const finalDepositBalSOL = await provider.connection.getBalance(
+      vaultInfoPDA
+    );
+
+    assert(finalDepositBalSOL === afterDepositBalSOL + Number(depositAmount));
+
+    // Verify final balance for vGEM ATA
+    const finalBalanceATA = await provider.connection.getTokenAccountBalance(
+      associatedTokenAccount
+    );
+    assert(
+      Number(finalBalanceATA.value.amount) ===
+        Number(afterBalanceATA.value.amount) + Number(depositAmount)
     );
   });
 });
