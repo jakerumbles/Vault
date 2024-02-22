@@ -244,4 +244,172 @@ describe("vault", () => {
         Number(afterBalanceATA.value.amount) + Number(depositAmount)
     );
   });
+
+  it("Withdraws 1.5 SOL twice", async () => {
+    const associatedTokenAccount = await getAssociatedTokenAddress(
+      mintPDA,
+      provider.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    // Get the starting SOL balance of the vault_info account before deposit
+    const vaultBeforeWithdrawBalSOL = await provider.connection.getBalance(
+      vaultInfoPDA
+    );
+
+    const userBeforeWithdrawBalSOL = await provider.connection.getBalance(
+      provider.publicKey
+    );
+
+    // Verify initial balance for vGEM ATA
+    const ataBeforeWithdrawBal =
+      await provider.connection.getTokenAccountBalance(associatedTokenAccount);
+
+    console.log(
+      `\n----------------
+BEFORE withdraw balances
+VAULT: ${vaultBeforeWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
+USER: ${userBeforeWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
+ATA: ${Number(ataBeforeWithdrawBal.value.amount) / LAMPORTS_PER_SOL} vGEM`
+    );
+
+    const withdrawAmount = new BN(1.5 * LAMPORTS_PER_SOL);
+
+    const signature = await program.methods
+      .withdraw(withdrawAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        mint: mintPDA,
+        burnAta: associatedTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    // const tx = await program.methods
+    //   .withdraw(withdrawAmount)
+    //   .accounts({
+    //     vaultInfo: vaultInfoPDA,
+    //     mint: mintPDA,
+    //     burnAta: associatedTokenAccount,
+    //     payer: provider.publicKey,
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //   })
+    //   .transaction();
+
+    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+    //   .blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = provider.wallet.publicKey;
+    // provider.wallet.signTransaction(tx);
+
+    // const signature = await provider.connection.sendRawTransaction(
+    //   tx.serialize(),
+    //   {
+    //     skipPreflight: true,
+    //   }
+    // );
+
+    console.log(
+      `WITHDRAW_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
+
+    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    const vaultAfterWithdrawBalSOL = await provider.connection.getBalance(
+      vaultInfoPDA
+    );
+
+    const userAfterWithdrawBalSOL = await provider.connection.getBalance(
+      provider.publicKey
+    );
+
+    let afterBalanceATA = await provider.connection.getTokenAccountBalance(
+      associatedTokenAccount
+    );
+
+    console.log(
+      `\n----------------
+AFTER 1st withdraw balances
+VAULT: ${vaultAfterWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
+USER: ${userAfterWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
+ATA: ${Number(afterBalanceATA.value.amount) / LAMPORTS_PER_SOL} vGEM`
+    );
+
+    // SOL was returned to the user
+    assert(
+      vaultAfterWithdrawBalSOL ===
+        vaultBeforeWithdrawBalSOL - Number(withdrawAmount)
+    );
+
+    const baseFeeLamports = 5000;
+    assert(
+      userAfterWithdrawBalSOL ===
+        userBeforeWithdrawBalSOL + Number(withdrawAmount) - baseFeeLamports
+    );
+
+    // Verify updated balance for vGEM ATA
+    assert(
+      Number(afterBalanceATA.value.amount) ===
+        Number(ataBeforeWithdrawBal.value.amount) - Number(withdrawAmount)
+    );
+
+    // Withdraw the rest
+    const signature2 = await program.methods
+      .withdraw(withdrawAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        mint: mintPDA,
+        burnAta: associatedTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    console.log(
+      `WITHDRAW_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
+
+    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    const vaultFinalWithdrawBalSOL = await provider.connection.getBalance(
+      vaultInfoPDA
+    );
+
+    const userFinalWithdrawBalSOL = await provider.connection.getBalance(
+      provider.publicKey
+    );
+
+    let finalBalanceATA = await provider.connection.getTokenAccountBalance(
+      associatedTokenAccount
+    );
+
+    console.log(
+      `\n----------------
+AFTER 2nd withdraw balances
+VAULT: ${vaultFinalWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
+USER: ${userFinalWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
+ATA: ${Number(finalBalanceATA.value.amount) / LAMPORTS_PER_SOL} vGEM`
+    );
+
+    // SOL was returned to the user
+    assert(
+      vaultFinalWithdrawBalSOL ===
+        vaultAfterWithdrawBalSOL - Number(withdrawAmount)
+    );
+
+    assert(
+      userFinalWithdrawBalSOL ===
+        userAfterWithdrawBalSOL + Number(withdrawAmount) - baseFeeLamports
+    );
+
+    // Verify updated balance for vGEM ATA
+    assert(
+      Number(finalBalanceATA.value.amount) ===
+        Number(afterBalanceATA.value.amount) - Number(withdrawAmount)
+    );
+  });
 });

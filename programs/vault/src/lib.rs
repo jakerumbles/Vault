@@ -1,9 +1,14 @@
+mod errors;
+mod util;
+
 use anchor_lang::{prelude::*, solana_program::program::invoke_signed, system_program};
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::create_metadata_accounts_v3,
     token::{burn, mint_to, Burn, Mint, MintTo, Token, TokenAccount},
 };
+use errors::ErrorCode;
+use util::transfer_lamports;
 
 declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
 
@@ -133,7 +138,7 @@ pub mod vault {
             return Err(ErrorCode::WithdrawAmountTooLarge.into());
         }
 
-        // Burn LP tokens
+        // Burn LP tokens. Vault owns the LP mint so it must sign off on the burn
         let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
         let signer_seeds = &[&seeds[..]];
         let burn_cpi_context = CpiContext::new_with_signer(
@@ -141,7 +146,7 @@ pub mod vault {
             Burn {
                 mint: ctx.accounts.mint.to_account_info(),
                 from: ctx.accounts.burn_ata.to_account_info(),
-                authority: ctx.accounts.vault_info.to_account_info(),
+                authority: ctx.accounts.payer.to_account_info(),
             },
             signer_seeds,
         );
@@ -156,14 +161,22 @@ pub mod vault {
         );
 
         // Transfer the SOL back to the depositor
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            system_program::Transfer {
-                from: ctx.accounts.vault_info.to_account_info(),
-                to: ctx.accounts.payer.to_account_info(),
-            },
-        );
-        system_program::transfer(cpi_context, amount)?;
+        // Using custom transfer fn here b/c the `vault_info` account is owned by the vault program, not the System Program
+        transfer_lamports(
+            &ctx.accounts.vault_info.to_account_info(),
+            &ctx.accounts.payer.to_account_info(),
+            amount,
+        )?;
+
+        // let cpi_context = CpiContext::new_with_signer(
+        //     ctx.accounts.system_program.to_account_info(),
+        //     system_program::Transfer {
+        //         from: ctx.accounts.vault_info.to_account_info(),
+        //         to: ctx.accounts.payer.to_account_info(),
+        //     },
+        //     signer_seeds,
+        // );
+        // system_program::transfer(cpi_context, amount)?;
 
         msg!(
             "Transferred {} lamports back to {}",
@@ -279,16 +292,6 @@ pub struct VaultInfo {
 
 impl VaultInfo {
     pub const LEN: usize = 8 + 1 + 1;
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Deposit amount too large. Would cause vault to exceed max balance.")]
-    DepositAmountTooLarge,
-    #[msg("No LP tokens to burn for withdrawal.")]
-    NoBalance,
-    #[msg("Withdraw amount is greater than callers LP token balance.")]
-    WithdrawAmountTooLarge,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
