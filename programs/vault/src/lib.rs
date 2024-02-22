@@ -1,10 +1,11 @@
 mod errors;
 mod util;
 
-use anchor_lang::{prelude::*, solana_program::program::invoke_signed, system_program};
+use anchor_lang::{prelude::*, system_program};
 use anchor_spl::{
-    associated_token::AssociatedToken,
-    metadata::create_metadata_accounts_v3,
+    metadata::{
+        create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
+    },
     token::{burn, mint_to, Burn, Mint, MintTo, Token, TokenAccount},
 };
 use errors::ErrorCode;
@@ -14,9 +15,6 @@ declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
 
 #[program]
 pub mod vault {
-    use anchor_spl::metadata::{mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3};
-    use solana_program::native_token::LAMPORTS_PER_SOL;
-
     use super::*;
 
     /// Initializes a new vault and sets the vault configuration.
