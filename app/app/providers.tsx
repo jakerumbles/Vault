@@ -14,8 +14,9 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 import { useMemo } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  // const network = WalletAdapterNetwork.Devnet;
+  // const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const endpoint = "http://localhost:8899";
   const wallets = useMemo(
     () => [new walletAdapterWallets.PhantomWalletAdapter()],
     []

@@ -7,8 +7,6 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 export const UserBalance = () => {
   // State to store the user's SOL balance
   const [solBalance, setSolBalance] = useState<Number | null>(null);
-
-  //   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
 
@@ -33,6 +31,19 @@ export const UserBalance = () => {
 
   // Use effect hook to fetch the SOL balance when the component mounts
   useEffect(() => {
+    if (!connection || !publicKey) {
+      return;
+    }
+
+    // Ensure the balance updates after the transaction completes
+    connection.onAccountChange(
+      publicKey,
+      (updatedAccountInfo) => {
+        setSolBalance(updatedAccountInfo.lamports / LAMPORTS_PER_SOL);
+      },
+      "confirmed"
+    );
+
     fetchSolBalance();
   }, [connection, publicKey]); // Empty dependency array ensures the effect runs only once on component mount
 
