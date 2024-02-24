@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/react";
-import { DepositData } from "../models/DepositData";
-import { Address, web3 } from "@coral-xyz/anchor";
+import { web3 } from "@coral-xyz/anchor";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { AnchorProvider, setProvider, Program } from "@coral-xyz/anchor";
@@ -11,21 +10,13 @@ import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { BN } from "bn.js";
 import {
   getAssociatedTokenAddress,
-  createAssociatedTokenAccountInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  MINT_SIZE,
-  ACCOUNT_SIZE,
 } from "@solana/spl-token";
 import { UserBalance } from "./UserBalance";
 
-export interface TokenInfo {
-  tokenSymbol: string;
-  tokenBalance: number | null;
-}
-
-export const Deposit = (tokenInfo: TokenInfo) => {
-  const [depositAmount, setDepositAmount] = useState("");
+export const Withdraw = () => {
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const { connection } = useConnection();
   const wallet = useAnchorWallet();
@@ -43,16 +34,11 @@ export const Deposit = (tokenInfo: TokenInfo) => {
   );
   const program = new Program(IDL, programId);
 
-  //   const handlePress = () => {
-  //     // TODO: Add deposit amount check
-  //     console.log("Depositing", depositAmount);
-  //   };
-
   const handlePress = (event: any) => {
     // event.preventDefault();
-    console.log("Depositing", depositAmount);
+    console.log("Withdrawing", withdrawAmount);
 
-    const amountNum = Number(depositAmount);
+    const amountNum = Number(withdrawAmount);
     const amount = new BN(amountNum * LAMPORTS_PER_SOL);
     handleTransactionSubmit(amount);
   };
@@ -80,37 +66,19 @@ export const Deposit = (tokenInfo: TokenInfo) => {
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-    // Check if the ATA has already aleady exists
-    const ataAccount = await connection.getAccountInfo(associatedTokenAccount);
-
-    // If the ATA doesn't exist, create it
-    if (!ataAccount) {
-      console.error("ATA not found, so now creating it");
-
-      // Create the ATA account that is associated with our mint on our anchor wallet
-      const createATAIx = createAssociatedTokenAccountInstruction(
-        provider.publicKey,
-        associatedTokenAccount,
-        provider.publicKey,
-        mintPDA
-      );
-
-      tx.add(createATAIx);
-    }
-
-    const depositIx = await program.methods
-      .depositSol(amount)
+    const withdrawIx = await program.methods
+      .withdraw(amount)
       .accounts({
         vaultInfo: vaultInfoPDA,
         mint: mintPDA,
-        destination: associatedTokenAccount,
+        burnAta: associatedTokenAccount,
         payer: provider.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
 
-    tx.add(depositIx);
+    tx.add(withdrawIx);
 
     // Sign and send the transaction
     const signature = await provider.sendAndConfirm(tx);
@@ -120,24 +88,20 @@ export const Deposit = (tokenInfo: TokenInfo) => {
     );
 
     // Clear the input field
-    setDepositAmount("");
+    setWithdrawAmount("");
   };
 
   return (
     <div className="flex flex-col m-4 w-56 gap-4">
-      {/* <p className="text-lg ">10 SOL</p> */}
-      <UserBalance
-        tokenSymbol={tokenInfo.tokenSymbol}
-        tokenBalance={tokenInfo.tokenBalance}
-      />
+      {/* <UserBalance tokenSymbol={} /> */}
       <Input
         type="number"
-        label="SOL"
-        value={depositAmount}
-        onChange={(e) => setDepositAmount(e.target.value)}
+        label="vGEM"
+        value={withdrawAmount}
+        onChange={(e) => setWithdrawAmount(e.target.value)}
       />
-      <Button color="primary" onPress={handlePress}>
-        Deposit
+      <Button color="secondary" onPress={handlePress}>
+        Withdraw
       </Button>
     </div>
   );

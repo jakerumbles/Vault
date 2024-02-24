@@ -9,6 +9,7 @@ import { Tooltip } from "@nextui-org/tooltip";
 import Image from "next/image";
 // import SolanaLogo from "../public/solanaLogo.svg";
 import GemsDAOLogo from "../public/gems_dao_logo.png";
+import { UserBalance } from "./UserBalance";
 
 export function NavBar() {
   return (
@@ -22,6 +23,9 @@ export function NavBar() {
             <WalletMultiButton />
           </NavbarItem>
         </Tooltip>
+        <NavbarItem>
+          <UserBalance />
+        </NavbarItem>
       </NavbarContent>
     </Navbar>
   );
