@@ -6,7 +6,7 @@ import { Address, web3 } from "@coral-xyz/anchor";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { AnchorProvider, setProvider, Program } from "@coral-xyz/anchor";
-import { IDL } from "../../target/types/vault";
+import { IDL } from "../idl/vault";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { BN } from "bn.js";
 import {
