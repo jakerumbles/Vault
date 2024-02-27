@@ -12,7 +12,7 @@ interface VaultInfo {
   depositTokenSymbol: string;
   withdrawTokenSymbol: string;
   depositTokenBalance: number | null;
-  withdrawTokenBalance: number;
+  withdrawTokenBalance: number | null;
 }
 
 export const Vault = (vaultInfo: VaultInfo) => {
@@ -28,7 +28,10 @@ export const Vault = (vaultInfo: VaultInfo) => {
 
       {/* Withdraw component */}
       <div className="flex flex-col items-center m-4 w-56 gap-4">
-        <Withdraw />
+        <Withdraw
+          tokenSymbol={vaultInfo.withdrawTokenSymbol}
+          tokenBalance={vaultInfo.withdrawTokenBalance}
+        />
       </div>
     </div>
   );

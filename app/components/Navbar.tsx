@@ -23,9 +23,7 @@ export function NavBar() {
             <WalletMultiButton />
           </NavbarItem>
         </Tooltip>
-        <NavbarItem>
-          <UserBalance />
-        </NavbarItem>
+        <NavbarItem>{/* <UserBalance tokenSymbol="" /> */}</NavbarItem>
       </NavbarContent>
     </Navbar>
   );

@@ -14,8 +14,9 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { UserBalance } from "./UserBalance";
+import { TokenInfo } from "./Deposit";
 
-export const Withdraw = () => {
+export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const { connection } = useConnection();
@@ -93,10 +94,17 @@ export const Withdraw = () => {
 
   return (
     <div className="flex flex-col m-4 w-56 gap-4">
-      {/* <UserBalance tokenSymbol={} /> */}
+      <div>
+        {/* <h2>User SOL Balance</h2> */}
+        <p>
+          {tokenBalance !== null
+            ? `${tokenBalance} ${tokenSymbol}`
+            : "Loading..."}
+        </p>
+      </div>
       <Input
         type="number"
-        label="vGEM"
+        label={tokenSymbol}
         value={withdrawAmount}
         onChange={(e) => setWithdrawAmount(e.target.value)}
       />

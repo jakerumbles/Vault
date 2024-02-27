@@ -30,6 +30,8 @@ export default function Page() {
       return;
     }
 
+    fetchSolBalance();
+
     // Ensure the balance updates after the transaction completes
     connection.onAccountChange(
       publicKey,
@@ -132,7 +134,7 @@ export default function Page() {
         depositTokenSymbol="SOL"
         depositTokenBalance={balances["SOL"]}
         withdrawTokenSymbol="vGEM"
-        withdrawTokenBalance={0}
+        withdrawTokenBalance={balances["vGEM"]}
       />
     </div>
   );

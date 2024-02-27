@@ -24,7 +24,7 @@ export interface TokenInfo {
   tokenBalance: number | null;
 }
 
-export const Deposit = (tokenInfo: TokenInfo) => {
+export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
   const [depositAmount, setDepositAmount] = useState("");
 
   const { connection } = useConnection();
@@ -125,14 +125,21 @@ export const Deposit = (tokenInfo: TokenInfo) => {
 
   return (
     <div className="flex flex-col m-4 w-56 gap-4">
-      {/* <p className="text-lg ">10 SOL</p> */}
-      <UserBalance
+      {/* <UserBalance
         tokenSymbol={tokenInfo.tokenSymbol}
         tokenBalance={tokenInfo.tokenBalance}
-      />
+      /> */}
+      <div>
+        {/* <h2>User SOL Balance</h2> */}
+        <p>
+          {tokenBalance !== null
+            ? `${tokenBalance} ${tokenSymbol}`
+            : "Loading..."}
+        </p>
+      </div>
       <Input
         type="number"
-        label="SOL"
+        label={tokenSymbol}
         value={depositAmount}
         onChange={(e) => setDepositAmount(e.target.value)}
       />
