@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/react";
-import { DepositData } from "../models/DepositData";
+// import { DepositData } from "../models/DepositData";
 import { Address, web3 } from "@coral-xyz/anchor";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
