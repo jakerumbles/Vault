@@ -1,15 +1,11 @@
-mod errors;
+pub mod errors;
+pub mod instructions;
+pub mod state;
 mod util;
 
-use anchor_lang::{prelude::*, system_program};
-use anchor_spl::{
-    metadata::{
-        create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
-    },
-    token::{burn, mint_to, Burn, Mint, MintTo, Token, TokenAccount},
-};
-use errors::ErrorCode;
-use util::transfer_lamports;
+use anchor_lang::prelude::*;
+use instructions::*;
+use state::InitTokenParams;
 
 declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
 
@@ -20,282 +16,22 @@ pub mod vault {
     /// Initializes a new vault and sets the vault configuration.
     /// `max_balance` is expected to be in lamports.
     /// Also creates a new token mint and initializes the metadata for the token
-    pub fn initialize(
-        ctx: Context<Initialize>,
+    pub fn initialize_vault(
+        ctx: Context<InitializeVault>,
         max_balance: u64,
         metadata: InitTokenParams,
     ) -> Result<()> {
-        msg!("Initializing vault...");
-
-        let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
-        let signer_seeds = &[&seeds[..]];
-
-        let cpi_context = CpiContext::new(
-            ctx.accounts.token_metadata_program.to_account_info(),
-            CreateMetadataAccountsV3 {
-                metadata: ctx.accounts.metadata.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                // Get the account info for the current program
-                mint_authority: ctx.accounts.vault_info.to_account_info(),
-                payer: ctx.accounts.payer.to_account_info(),
-                update_authority: ctx.accounts.vault_info.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-                rent: ctx.accounts.rent.to_account_info(),
-            },
-        )
-        .with_signer(signer_seeds);
-
-        let data: DataV2 = DataV2 {
-            name: metadata.name,
-            symbol: metadata.symbol.clone(),
-            uri: metadata.uri,
-            seller_fee_basis_points: 0,
-            creators: None,
-            collection: None,
-            uses: None,
-        };
-
-        create_metadata_accounts_v3(cpi_context, data, true, true, None)?;
-
-        msg!("{} token mint created successfully.", metadata.symbol);
-
-        let vault_info = &mut ctx.accounts.vault_info;
-        vault_info.max_balance = max_balance;
-        vault_info.bump = ctx.bumps.vault_info;
-        vault_info.is_initialized = true;
-
-        msg!(
-            "Vault initialized. Max balance: {} lamports, bump: {}",
-            max_balance,
-            vault_info.bump
-        );
-
-        Ok(())
+        instructions::initialize_vault::handler(ctx, max_balance, metadata)
     }
 
     /// Deposits SOL into the vault and mints LP tokens to the depositor.
     /// TODO: Make sure decimals are handled with `amount`
-    pub fn deposit_sol(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-        let vault_info = &ctx.accounts.vault_info;
-        let new_balance = vault_info.get_lamports() + amount;
-        if new_balance > vault_info.max_balance {
-            return Err(ErrorCode::DepositAmountTooLarge.into());
-        }
-
-        // Transfer the SOL from the depositor to the vault
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            system_program::Transfer {
-                from: ctx.accounts.payer.to_account_info(),
-                to: ctx.accounts.vault_info.to_account_info(),
-            },
-        );
-        system_program::transfer(cpi_context, amount)?;
-
-        msg!(
-            "Deposited {} lamports into the vault from {}",
-            amount,
-            ctx.accounts.payer.key()
-        );
-
-        // Mint LP tokens to the depositor
-        let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
-        let signer_seeds = &[&seeds[..]];
-        let cpi_context = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            MintTo {
-                mint: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.destination.to_account_info(),
-                authority: ctx.accounts.vault_info.to_account_info(),
-            },
-            signer_seeds,
-        );
-
-        mint_to(cpi_context, amount)?;
-
-        msg!(
-            "Minted {} LP tokens to {} for {}",
-            amount,
-            ctx.accounts.destination.key(),
-            ctx.accounts.payer.key()
-        );
-
-        Ok(())
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        instructions::deposit::handler(ctx, amount)
     }
 
     /// Withdraws LP tokens from the depositor and burns them, transferring SOL to the depositor.
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-        // Verify non-zero LP token balance
-        let caller_balance = ctx.accounts.burn_ata.amount;
-        if caller_balance == 0 {
-            return Err(ErrorCode::NoBalance.into());
-        }
-
-        // Verify LP token balance is greater than or equal to the withdrawal amount
-        if caller_balance < amount {
-            return Err(ErrorCode::WithdrawAmountTooLarge.into());
-        }
-
-        // Burn LP tokens. Vault owns the LP mint so it must sign off on the burn
-        let seeds = &["SOLvault".as_bytes(), &[ctx.bumps.vault_info]];
-        let signer_seeds = &[&seeds[..]];
-        let burn_cpi_context = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Burn {
-                mint: ctx.accounts.mint.to_account_info(),
-                from: ctx.accounts.burn_ata.to_account_info(),
-                authority: ctx.accounts.payer.to_account_info(),
-            },
-            signer_seeds,
-        );
-
-        burn(burn_cpi_context, amount)?;
-
-        msg!(
-            "Burned {} LP tokens from {} for {}",
-            amount,
-            ctx.accounts.burn_ata.key(),
-            ctx.accounts.payer.key()
-        );
-
-        // Transfer the SOL back to the depositor
-        // Using custom transfer fn here b/c the `vault_info` account is owned by the vault program, not the System Program
-        transfer_lamports(
-            &ctx.accounts.vault_info.to_account_info(),
-            &ctx.accounts.payer.to_account_info(),
-            amount,
-        )?;
-
-        // let cpi_context = CpiContext::new_with_signer(
-        //     ctx.accounts.system_program.to_account_info(),
-        //     system_program::Transfer {
-        //         from: ctx.accounts.vault_info.to_account_info(),
-        //         to: ctx.accounts.payer.to_account_info(),
-        //     },
-        //     signer_seeds,
-        // );
-        // system_program::transfer(cpi_context, amount)?;
-
-        msg!(
-            "Transferred {} lamports back to {}",
-            amount,
-            ctx.accounts.payer.key()
-        );
-
-        Ok(())
+        instructions::withdraw::handler(ctx, amount)
     }
-}
-
-#[derive(Accounts)]
-// #[instruction(
-//     params: InitTokenParams
-// )]
-pub struct Initialize<'info> {
-    /// CHECK: New Metaplex Account being created
-    #[account(mut)]
-    pub metadata: UncheckedAccount<'info>,
-    #[account(
-        init,
-        payer = payer,
-        space = 8 + VaultInfo::LEN,
-        seeds = [b"SOLvault"],
-        bump,
-        constraint = vault_info.is_initialized == false
-    )]
-    pub vault_info: Account<'info, VaultInfo>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    // Create mint account
-    // Same PDA as address of the account and mint/freeze authority
-    #[account(
-        init,
-        seeds = [b"mint"],
-        bump,
-        payer = payer,
-        mint::decimals = 9,
-        mint::authority = vault_info,
-    )]
-    pub mint: Account<'info, Mint>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    /// CHECK: account constraint checked in account trait
-    #[account(address = mpl_token_metadata::ID)]
-    pub token_metadata_program: UncheckedAccount<'info>,
-}
-
-#[derive(Accounts)]
-pub struct Deposit<'info> {
-    #[account(
-        mut,
-        seeds = [b"SOLvault"],
-        bump,
-        constraint = vault_info.is_initialized == true
-    )]
-    pub vault_info: Account<'info, VaultInfo>,
-    #[account(
-        mut,
-        seeds = [b"mint"],
-        bump,
-        mint::authority = vault_info,
-    )]
-    pub mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = payer,
-    )]
-    pub destination: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-}
-
-#[derive(Accounts)]
-pub struct Withdraw<'info> {
-    #[account(
-        mut,
-        seeds = [b"SOLvault"],
-        bump,
-        constraint = vault_info.is_initialized == true
-    )]
-    pub vault_info: Account<'info, VaultInfo>,
-    #[account(
-        mut,
-        seeds = [b"mint"],
-        bump,
-        mint::authority = vault_info,
-    )]
-    pub mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = payer,
-    )]
-    pub burn_ata: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-}
-
-#[account]
-pub struct VaultInfo {
-    // pub accepted_token: Pubkey, for USDC mint address for example
-    pub max_balance: u64,
-    pub bump: u8,
-    pub is_initialized: bool,
-}
-
-impl VaultInfo {
-    pub const LEN: usize = 8 + 1 + 1;
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct InitTokenParams {
-    pub name: String,
-    pub symbol: String,
-    pub uri: String,
-    pub decimals: u8,
 }

@@ -4,6 +4,9 @@
 seeds = false
 skip-lint = false
 
+[programs.devnet]
+vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
+
 [programs.localnet]
 vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
 
@@ -11,7 +14,7 @@ vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "/Users/jake/.config/solana/id.json"
 
 [scripts]
