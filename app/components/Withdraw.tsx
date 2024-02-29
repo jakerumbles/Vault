@@ -109,7 +109,10 @@ export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
         onChange={(e) => setWithdrawAmount(e.target.value)}
       />
       <Button color="secondary" onPress={handlePress}>
-        Withdraw
+        <span>
+          Withdraw{" "}
+          <span style={{ fontSize: "74%", fontWeight: 250 }}>get SOL</span>
+        </span>
       </Button>
     </div>
   );

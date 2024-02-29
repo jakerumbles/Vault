@@ -38,7 +38,7 @@ pub struct InitializeVault<'info> {
     )]
     pub mint: Account<'info, Mint>,
     // If vault is optionally for SPL token deposit, here is its token account
-    // pub vault_token_account: Account<'info, TokenAccount>,
+    pub vault_token_account: Account<'info, TokenAccount>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,

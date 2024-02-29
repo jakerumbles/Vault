@@ -144,7 +144,10 @@ export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
         onChange={(e) => setDepositAmount(e.target.value)}
       />
       <Button color="primary" onPress={handlePress}>
-        Deposit
+        <span>
+          Deposit{" "}
+          <span style={{ fontSize: "74%", fontWeight: 250 }}>get vGEM</span>
+        </span>
       </Button>
     </div>
   );
