@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct VaultInfo {
-    // pub accepted_token: Pubkey, for USDC mint address for example
+    pub accepted_token_mint: Pubkey, // for USDC mint address for example
     pub max_balance: u64,
     pub bump: u8,
     pub is_initialized: bool,

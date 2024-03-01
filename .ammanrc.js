@@ -18,6 +18,26 @@ module.exports = {
         deployPath: localDeployPath("mpl_token_metadata"),
       },
     ],
+    // accounts: [
+    //   {
+    //     label: "USDC Token Mint",
+    //     accountId: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    //     // By default executable is false and is not required to be in the config
+    //     // executable: false,
+
+    //     // Providing a cluster here will override the accountsCluster field
+    //     cluster: "https://api.devnet.solana.com",
+    //   },
+    //   {
+    //     label: "My USDC ATA",
+    //     accountId: "cQSMaHxvYCyMHR1sfgCq7fDAqshhYPHP2WKRry48qJB",
+    //     // By default executable is false and is not required to be in the config
+    //     // executable: false,
+
+    //     // Providing a cluster here will override the accountsCluster field
+    //     cluster: "https://api.devnet.solana.com",
+    //   },
+    // ],
     jsonRpcUrl: LOCALHOST,
     websocketUrl: WSLOCALHOST,
     commitment: "singleGossip",

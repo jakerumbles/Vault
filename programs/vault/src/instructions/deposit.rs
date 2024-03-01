@@ -17,16 +17,20 @@ pub struct Deposit<'info> {
         constraint = vault_info.is_initialized == true
     )]
     pub vault_info: Account<'info, VaultInfo>,
+    // Mint for the deposit token
+    pub deposit_mint: Account<'info, Mint>,
+    // If vault is optionally for SPL token deposit, here is its token account
+    pub deposit_vault_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
         seeds = [b"mint"],
         bump,
         mint::authority = vault_info,
     )]
-    pub mint: Account<'info, Mint>,
+    pub lp_mint: Account<'info, Mint>,
     #[account(
         mut,
-        associated_token::mint = mint,
+        associated_token::mint = lp_mint,
         associated_token::authority = payer,
     )]
     pub destination: Account<'info, TokenAccount>,
@@ -67,7 +71,7 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     let cpi_context = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         MintTo {
-            mint: ctx.accounts.mint.to_account_info(),
+            mint: ctx.accounts.lp_mint.to_account_info(),
             to: ctx.accounts.destination.to_account_info(),
             authority: ctx.accounts.vault_info.to_account_info(),
         },
