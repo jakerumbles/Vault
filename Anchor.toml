@@ -4,8 +4,8 @@
 seeds = false
 skip-lint = false
 
-[programs.devnet]
-vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
+# [programs.devnet]
+# vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
 
 [programs.localnet]
 vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"

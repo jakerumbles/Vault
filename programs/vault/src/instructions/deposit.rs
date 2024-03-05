@@ -12,7 +12,7 @@ use anchor_spl::{
 pub struct Deposit<'info> {
     #[account(
         mut,
-        seeds = [b"vault"],
+        seeds = [b"vault", deposit_mint.key().as_ref()],
         bump,
         constraint = vault_info.is_initialized == true
     )]
@@ -23,7 +23,7 @@ pub struct Deposit<'info> {
     pub deposit_vault_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        seeds = [b"mint"],
+        seeds = [b"lp_mint"],
         bump,
         mint::authority = vault_info,
     )]

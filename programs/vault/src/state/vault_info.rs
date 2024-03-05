@@ -9,7 +9,7 @@ pub struct VaultInfo {
 }
 
 impl VaultInfo {
-    pub const LEN: usize = 8 + 1 + 1;
+    pub const LEN: usize = 32 + 8 + 1 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
