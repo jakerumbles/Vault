@@ -286,55 +286,64 @@ describe("USDC vault", () => {
       `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
     );
 
-    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    // Verify the vault_info account holds the correct amount of USDC after the deposit
     const afterDepositBalUsdc = (
       await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
-    ).value.uiAmount;
+    ).value.amount;
 
     console.log(
-      `After deposit balance for ${vaultInfoPDA.toBase58()}: ${afterDepositBalUsdc}`
+      `VAULT After deposit balance for ${vaultInfoPDA.toBase58()}: ${afterDepositBalUsdc} USDC`
     );
 
-    // assert(afterDepositBalSOL === beforeDepositBalance + Number(depositAmount));
+    assert(
+      Number(afterDepositBalUsdc) ===
+        beforeDepositBalance + Number(depositAmount)
+    );
 
-    // // Verify updated balance for vGEM ATA
-    // const afterBalanceATA = await provider.connection.getTokenAccountBalance(
-    //   associatedTokenAccount
-    // );
-    // assert(Number(afterBalanceATA.value.amount) === Number(depositAmount));
+    // Verify updated balance for vGEM ATA
+    const afterBalanceATA = await provider.connection.getTokenAccountBalance(
+      userLpTokenAccount
+    );
+    assert(Number(afterBalanceATA.value.amount) === Number(depositAmount));
 
-    // // Deposit a 2nd time
-    // const signature2 = await program.methods
-    //   .deposit(depositAmount)
-    //   .accounts({
-    //     vaultInfo: vaultInfoPDA,
-    //     mint: mintPDA,
-    //     destination: associatedTokenAccount,
-    //     payer: provider.publicKey,
-    //     systemProgram: anchor.web3.SystemProgram.programId,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //   })
-    //   .rpc();
+    // Deposit a 2nd time
+    const signature2 = await program.methods
+      .deposit(depositAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
 
-    // console.log(
-    //   `#2 DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
-    // );
+    console.log(
+      `#2 DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
 
-    // // Verify the vault_info account holds the correct amount of SOL after the deposit
-    // const finalDepositBalSOL = await provider.connection.getBalance(
-    //   vaultInfoPDA
-    // );
+    // Verify the Vault USDC account holds the correct amount of USDC after the deposit
+    const finalDepositBalUSDC = (
+      await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
+    ).value.amount;
 
-    // assert(finalDepositBalSOL === afterDepositBalSOL + Number(depositAmount));
+    assert(
+      Number(finalDepositBalUSDC) ===
+        Number(afterDepositBalUsdc) + Number(depositAmount)
+    );
 
-    // // Verify final balance for vGEM ATA
-    // const finalBalanceATA = await provider.connection.getTokenAccountBalance(
-    //   associatedTokenAccount
-    // );
-    // assert(
-    //   Number(finalBalanceATA.value.amount) ===
-    //     Number(afterBalanceATA.value.amount) + Number(depositAmount)
-    // );
+    // Verify final balance for vGEM ATA
+    const finalBalanceATA = await provider.connection.getTokenAccountBalance(
+      userLpTokenAccount
+    );
+    assert(
+      Number(finalBalanceATA.value.amount) ===
+        Number(afterBalanceATA.value.amount) + Number(depositAmount)
+    );
   });
 
   // it("Withdraws 1.5 SOL twice", async () => {
