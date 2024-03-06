@@ -11,6 +11,10 @@ use anchor_spl::{
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
+#[instruction(
+    max_balance: u64,
+    params: InitTokenParams
+)]
 pub struct InitializeVault<'info> {
     /// CHECK: New Metaplex Account being created
     #[account(mut)]
@@ -43,7 +47,7 @@ pub struct InitializeVault<'info> {
         seeds = [b"lp_mint"],
         bump,
         payer = payer,
-        mint::decimals = 9,
+        mint::decimals = params.decimals,
         mint::authority = vault_info,
     )]
     pub lp_mint: Account<'info, Mint>,
@@ -61,7 +65,7 @@ pub struct InitializeVault<'info> {
 pub fn handler(
     ctx: Context<InitializeVault>,
     max_balance: u64,
-    metadata: InitTokenParams,
+    params: InitTokenParams,
 ) -> Result<()> {
     msg!("Initializing vault...");
 
@@ -89,9 +93,9 @@ pub fn handler(
     .with_signer(signer_seeds);
 
     let data: DataV2 = DataV2 {
-        name: metadata.name,
-        symbol: metadata.symbol.clone(),
-        uri: metadata.uri,
+        name: params.name,
+        symbol: params.symbol.clone(),
+        uri: params.uri,
         seller_fee_basis_points: 0,
         creators: None,
         collection: None,
@@ -100,7 +104,7 @@ pub fn handler(
 
     create_metadata_accounts_v3(cpi_context, data, true, true, None)?;
 
-    msg!("{} LP token mint created successfully.", metadata.symbol);
+    msg!("{} LP token mint created successfully.", params.symbol);
 
     let vault_info = &mut ctx.accounts.vault_info;
     vault_info.accepted_token_mint = deposit_mint_key;

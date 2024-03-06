@@ -12,7 +12,7 @@ impl VaultInfo {
     pub const LEN: usize = 32 + 8 + 1 + 1;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitTokenParams {
     pub name: String,
     pub symbol: String,

@@ -239,21 +239,7 @@ describe("USDC vault", () => {
 
     const depositAmount = new BN(500 * USDC_DECIMALS_MUL);
 
-    // const signature = await program.methods
-    //   .deposit(depositAmount)
-    //   .accounts({
-    //     vaultInfo: vaultInfoPDA,
-    //     depositMint: USDC_MINT,
-    //     depositVaultTokenAccount: depositVaultTokenAccount,
-    //     lpMint: lpMintPDA,
-    //     destination: userLpTokenAccount,
-    //     payer: provider.publicKey,
-    //     systemProgram: anchor.web3.SystemProgram.programId,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //   })
-    //   .rpc();
-
-    const tx = await program.methods
+    const signature = await program.methods
       .deposit(depositAmount)
       .accounts({
         vaultInfo: vaultInfoPDA,
@@ -266,20 +252,35 @@ describe("USDC vault", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .transaction();
+      .rpc();
 
-    let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
-      .blockhash;
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = provider.publicKey;
-    provider.wallet.signTransaction(tx);
+    // const tx = await program.methods
+    //   .deposit(depositAmount)
+    //   .accounts({
+    //     vaultInfo: vaultInfoPDA,
+    //     depositMint: USDC_MINT,
+    //     depositVaultTokenAccount: depositVaultTokenAccount,
+    //     depositUserTokenAccount: depositUserTokenAccount,
+    //     lpMint: lpMintPDA,
+    //     userLpTokenAccount: userLpTokenAccount,
+    //     payer: provider.publicKey,
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //   })
+    //   .transaction();
 
-    const signature = await provider.connection.sendRawTransaction(
-      tx.serialize(),
-      {
-        skipPreflight: true,
-      }
-    );
+    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+    //   .blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = provider.publicKey;
+    // provider.wallet.signTransaction(tx);
+
+    // const signature = await provider.connection.sendRawTransaction(
+    //   tx.serialize(),
+    //   {
+    //     skipPreflight: true,
+    //   }
+    // );
 
     console.log(
       `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
