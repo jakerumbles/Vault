@@ -15,11 +15,14 @@ import {
   getOrCreateAssociatedTokenAccount,
   createAssociatedTokenAccount,
   createMint,
+  mintTo,
 } from "@solana/spl-token";
 import { assert } from "chai";
 
 // const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 const USDC_DECIMALS = 6;
+
+// Multiply the amount of tokens you want by this to account for decimals
 const USDC_DECIMALS_MUL = 1000000;
 
 describe("USDC vault", () => {
@@ -30,13 +33,15 @@ describe("USDC vault", () => {
   // const program = anchor.workspace.Vault as Program<Vault>;
 
   // Setup custom USDC mint and vault token account
-  let provider: anchor.Provider;
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
   let program: Program<Vault>;
   let utilKeypair: anchor.web3.Keypair;
   let USDC_MINT: PublicKey;
   let vaultInfoPDA: PublicKey;
   let vaultInfoBump: number;
-  let vaultUsdcAtaAddress: PublicKey;
+  let depositVaultTokenAccount: PublicKey;
+  let depositUserTokenAccount: PublicKey;
   let lpMintPDA: PublicKey;
   const metadata = {
     name: "GEM Vault LP Token",
@@ -46,8 +51,6 @@ describe("USDC vault", () => {
   };
 
   before(async () => {
-    provider = anchor.AnchorProvider.env();
-    anchor.setProvider(provider);
     program = anchor.workspace.Vault as Program<Vault>;
     utilKeypair = anchor.web3.Keypair.generate();
 
@@ -62,36 +65,30 @@ describe("USDC vault", () => {
     console.log(`Balance of utilKeypair: ${balance}`);
 
     // Create custom USDC mint
-    USDC_MINT = await createMint(
-      provider.connection,
-      utilKeypair,
-      utilKeypair.publicKey,
-      utilKeypair.publicKey,
-      USDC_DECIMALS
-    );
+    USDC_MINT = await setupUsdc(provider, utilKeypair);
 
     [vaultInfoPDA, vaultInfoBump] = PublicKey.findProgramAddressSync(
       [anchor.utils.bytes.utf8.encode("vault"), USDC_MINT.toBuffer()],
       program.programId
     );
 
-    vaultUsdcAtaAddress = getAssociatedTokenAddressSync(
+    depositVaultTokenAccount = getAssociatedTokenAddressSync(
       USDC_MINT,
       vaultInfoPDA,
       true
     );
 
     let vaultUsdcAtaExists = await provider.connection.getAccountInfo(
-      vaultUsdcAtaAddress
+      depositVaultTokenAccount
     );
     if (!vaultUsdcAtaExists) {
       console.log(
-        "Creating vaultUsdcAta account ",
-        vaultUsdcAtaAddress.toBase58()
+        "Creating depositVaultTokenAccount account ",
+        depositVaultTokenAccount.toBase58()
       );
       let createAtaIx = createAssociatedTokenAccountInstruction(
         provider.publicKey,
-        vaultUsdcAtaAddress,
+        depositVaultTokenAccount,
         vaultInfoPDA,
         USDC_MINT
       );
@@ -101,6 +98,31 @@ describe("USDC vault", () => {
       // console.log(
       //   `vaultUsdcAta account created: ${vaultUsdcAtaAddress.toBase58()} with signature ${signature}`
       // );
+    }
+
+    depositUserTokenAccount = getAssociatedTokenAddressSync(
+      USDC_MINT,
+      provider.publicKey,
+      true
+    );
+
+    let userUsdcAtaExists = await provider.connection.getAccountInfo(
+      depositUserTokenAccount
+    );
+    if (!userUsdcAtaExists) {
+      console.log(
+        "Creating depositUserTokenAccount account ",
+        depositUserTokenAccount.toBase58()
+      );
+      let createAtaIx = createAssociatedTokenAccountInstruction(
+        provider.publicKey,
+        depositUserTokenAccount,
+        provider.publicKey,
+        USDC_MINT
+      );
+      let usdcSetupTx = new anchor.web3.Transaction().add(createAtaIx);
+
+      let signature = await provider.sendAndConfirm(usdcSetupTx);
     }
 
     [lpMintPDA] = PublicKey.findProgramAddressSync(
@@ -134,7 +156,7 @@ describe("USDC vault", () => {
         metadata: metadataAddress,
         vaultInfo: vaultInfoPDA,
         depositMint: USDC_MINT,
-        depositVaultTokenAccount: vaultUsdcAtaAddress,
+        depositVaultTokenAccount: depositVaultTokenAccount,
         payer: provider.publicKey,
         lpMint: lpMintPDA,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -181,12 +203,12 @@ describe("USDC vault", () => {
   it("Deposits 500 USDC twice", async () => {
     // Get the starting USDC balance of the vault_info account before deposit
     const beforeDepositBalance = (
-      await provider.connection.getTokenAccountBalance(vaultUsdcAtaAddress)
+      await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
     ).value.uiAmount;
     console.log(`Before deposit balance: ${beforeDepositBalance}`);
 
-    // Get the ATA address for the vault LP token (but it might not existing on the SOL network yet)
-    const associatedTokenAccount = await getAssociatedTokenAddress(
+    // Get the ATA address for the vaults LP token (but it might not existing on the SOL network yet)
+    const userLpTokenAccount = await getAssociatedTokenAddress(
       lpMintPDA,
       provider.publicKey,
       false,
@@ -198,7 +220,7 @@ describe("USDC vault", () => {
       // Create the ATA account that is associated with our mint on our anchor wallet
       createAssociatedTokenAccountInstruction(
         provider.publicKey,
-        associatedTokenAccount,
+        userLpTokenAccount,
         provider.publicKey,
         lpMintPDA
       )
@@ -211,59 +233,61 @@ describe("USDC vault", () => {
 
     // Verify 0 balance for new vGEM ATA
     const balance = await provider.connection.getTokenAccountBalance(
-      associatedTokenAccount
+      userLpTokenAccount
     );
     assert(Number(balance.value.amount) === 0);
 
     const depositAmount = new BN(500 * USDC_DECIMALS_MUL);
 
-    const signature = await program.methods
+    // const signature = await program.methods
+    //   .deposit(depositAmount)
+    //   .accounts({
+    //     vaultInfo: vaultInfoPDA,
+    //     depositMint: USDC_MINT,
+    //     depositVaultTokenAccount: depositVaultTokenAccount,
+    //     lpMint: lpMintPDA,
+    //     destination: userLpTokenAccount,
+    //     payer: provider.publicKey,
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //   })
+    //   .rpc();
+
+    const tx = await program.methods
       .deposit(depositAmount)
       .accounts({
         vaultInfo: vaultInfoPDA,
         depositMint: USDC_MINT,
-        depositVaultTokenAccount: vaultUsdcAtaAddress,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
         lpMint: lpMintPDA,
-        destination: associatedTokenAccount,
+        userLpTokenAccount: userLpTokenAccount,
         payer: provider.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .rpc();
+      .transaction();
 
-    // const tx = await program.methods
-    //   .depositSol(amount)
-    //   .accounts({
-    //     vaultInfo: vaultInfoPDA,
-    //     mint: mintPDA,
-    //     destination: associatedTokenAccount,
-    //     payer: provider.publicKey,
-    //     systemProgram: anchor.web3.SystemProgram.programId,
-    //     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //   })
-    //   .transaction();
+    let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+      .blockhash;
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = provider.publicKey;
+    provider.wallet.signTransaction(tx);
 
-    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
-    //   .blockhash;
-    // tx.recentBlockhash = blockhash;
-    // tx.feePayer = provider.wallet.publicKey;
-    // provider.wallet.signTransaction(tx);
+    const signature = await provider.connection.sendRawTransaction(
+      tx.serialize(),
+      {
+        skipPreflight: true,
+      }
+    );
 
-    // const signature = await provider.connection.sendRawTransaction(
-    //   tx.serialize(),
-    //   {
-    //     skipPreflight: true,
-    //   }
-    // );
-
-    // console.log(
-    //   `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
-    // );
+    console.log(
+      `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
 
     // Verify the vault_info account holds the correct amount of SOL after the deposit
     const afterDepositBalUsdc = (
-      await provider.connection.getTokenAccountBalance(vaultUsdcAtaAddress)
+      await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
     ).value.uiAmount;
 
     console.log(
@@ -482,9 +506,37 @@ describe("USDC vault", () => {
 });
 
 // create an empty typescript function
-function createUsdcMint() {
+async function setupUsdc(
+  provider: anchor.Provider,
+  utilKeypair: anchor.web3.Keypair
+): Promise<PublicKey> {
   // create a new mint
+  const USDC_MINT = await createMint(
+    provider.connection,
+    utilKeypair,
+    utilKeypair.publicKey,
+    utilKeypair.publicKey,
+    USDC_DECIMALS
+  );
+  console.log(`USDC_MINT: ${USDC_MINT.toBase58()}`);
+
   // create a new token account
+  const userUsdcTokenAccount = await getOrCreateAssociatedTokenAccount(
+    provider.connection,
+    utilKeypair,
+    USDC_MINT,
+    provider.publicKey
+  );
   // mint tokens to the token account
+  await mintTo(
+    provider.connection,
+    utilKeypair,
+    USDC_MINT,
+    userUsdcTokenAccount.address,
+    utilKeypair,
+    10000 * USDC_DECIMALS_MUL
+  );
+
   // return the token account
+  return USDC_MINT;
 }

@@ -5,7 +5,7 @@ use anchor_spl::{
     metadata::{
         create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
     },
-    token::{burn, mint_to, Burn, Mint, MintTo, Token, TokenAccount},
+    token::{burn, mint_to, transfer, Burn, Mint, MintTo, Token, TokenAccount, Transfer},
 };
 
 #[derive(Accounts)]
@@ -19,21 +19,35 @@ pub struct Deposit<'info> {
     pub vault_info: Account<'info, VaultInfo>,
     // Mint for the deposit token
     pub deposit_mint: Account<'info, Mint>,
-    // If vault is optionally for SPL token deposit, here is its token account
+    // Deposit token account for the vault
+    #[account(
+        mut,
+        associated_token::mint = deposit_mint,
+        associated_token::authority = vault_info
+    )]
     pub deposit_vault_token_account: Account<'info, TokenAccount>,
+    // Deposit token account for the user
+    #[account(
+        mut,
+        associated_token::mint = deposit_mint,
+        associated_token::authority = payer
+    )]
+    pub deposit_user_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
         seeds = [b"lp_mint"],
         bump,
         mint::authority = vault_info,
     )]
+    // Account for the LP token mint
     pub lp_mint: Account<'info, Mint>,
+    // User's LP token account
     #[account(
         mut,
         associated_token::mint = lp_mint,
         associated_token::authority = payer,
     )]
-    pub destination: Account<'info, TokenAccount>,
+    pub user_lp_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -44,35 +58,61 @@ pub struct Deposit<'info> {
 /// TODO: Make sure decimals are handled with `amount`
 pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     let vault_info = &ctx.accounts.vault_info;
-    let new_balance = vault_info.get_lamports() + amount;
+
+    // Checks
+    let new_balance = match ctx
+        .accounts
+        .deposit_vault_token_account
+        .amount
+        .checked_add(amount)
+    {
+        Some(new_balance) => new_balance,
+        None => return Err(ErrorCode::DepositAmountTooLarge.into()),
+    };
+
     if new_balance > vault_info.max_balance {
         return Err(ErrorCode::DepositAmountTooLarge.into());
     }
 
-    // Transfer the SOL from the depositor to the vault
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        system_program::Transfer {
-            from: ctx.accounts.payer.to_account_info(),
-            to: ctx.accounts.vault_info.to_account_info(),
+    // Transfer the SPL token, accepted by the vault, from the depositor to the vault's ATA
+    let transfer_ctx = CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        Transfer {
+            from: ctx.accounts.deposit_user_token_account.to_account_info(),
+            to: ctx.accounts.deposit_vault_token_account.to_account_info(),
+            authority: ctx.accounts.payer.to_account_info(),
         },
     );
-    system_program::transfer(cpi_context, amount)?;
+    transfer(transfer_ctx, amount)?;
+
+    // let cpi_context = CpiContext::new(
+    //     ctx.accounts.system_program.to_account_info(),
+    //     system_program::Transfer {
+    //         from: ctx.accounts.payer.to_account_info(),
+    //         to: ctx.accounts.vault_info.to_account_info(),
+    //     },
+    // );
+    // system_program::transfer(cpi_context, amount)?;
 
     msg!(
-        "Deposited {} lamports into the vault from {}",
+        "Deposited {} tokens into the vault from {}",
         amount,
         ctx.accounts.payer.key()
     );
 
     // Mint LP tokens to the depositor
-    let seeds = &["vault".as_bytes(), &[ctx.bumps.vault_info]];
+    let deposit_mint_key = ctx.accounts.deposit_mint.key();
+    let seeds = &[
+        "vault".as_bytes(),
+        deposit_mint_key.as_ref(),
+        &[ctx.bumps.vault_info],
+    ];
     let signer_seeds = &[&seeds[..]];
     let cpi_context = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         MintTo {
             mint: ctx.accounts.lp_mint.to_account_info(),
-            to: ctx.accounts.destination.to_account_info(),
+            to: ctx.accounts.user_lp_token_account.to_account_info(),
             authority: ctx.accounts.vault_info.to_account_info(),
         },
         signer_seeds,
@@ -83,7 +123,7 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     msg!(
         "Minted {} LP tokens to {} for {}",
         amount,
-        ctx.accounts.destination.key(),
+        ctx.accounts.user_lp_token_account.key(),
         ctx.accounts.payer.key()
     );
 
