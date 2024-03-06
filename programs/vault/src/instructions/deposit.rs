@@ -1,12 +1,7 @@
 use crate::errors::ErrorCode;
 use crate::state::vault_info::*;
-use anchor_lang::{prelude::*, system_program};
-use anchor_spl::{
-    metadata::{
-        create_metadata_accounts_v3, mpl_token_metadata::types::DataV2, CreateMetadataAccountsV3,
-    },
-    token::{burn, mint_to, transfer, Burn, Mint, MintTo, Token, TokenAccount, Transfer},
-};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer};
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
@@ -54,8 +49,8 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-/// Deposits SOL into the vault and mints LP tokens to the depositor.
-/// TODO: Make sure decimals are handled with `amount`
+/// Deposits SPL tokens into the vault and mints LP tokens to the depositor.
+/// `amount` is expected to be in the native token's base unit.
 pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     let vault_info = &ctx.accounts.vault_info;
 
@@ -84,15 +79,6 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         },
     );
     transfer(transfer_ctx, amount)?;
-
-    // let cpi_context = CpiContext::new(
-    //     ctx.accounts.system_program.to_account_info(),
-    //     system_program::Transfer {
-    //         from: ctx.accounts.payer.to_account_info(),
-    //         to: ctx.accounts.vault_info.to_account_info(),
-    //     },
-    // );
-    // system_program::transfer(cpi_context, amount)?;
 
     msg!(
         "Deposited {} tokens into the vault from {}",

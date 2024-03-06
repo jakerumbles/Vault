@@ -515,7 +515,7 @@ describe("USDC vault", () => {
   // });
 });
 
-// create an empty typescript function
+/** Setup a custom USDC mint and token account */
 async function setupUsdc(
   provider: anchor.Provider,
   utilKeypair: anchor.web3.Keypair
