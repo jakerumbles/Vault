@@ -346,173 +346,208 @@ describe("USDC vault", () => {
     );
   });
 
-  // it("Withdraws 1.5 SOL twice", async () => {
-  //   const associatedTokenAccount = await getAssociatedTokenAddress(
-  //     mintPDA,
-  //     provider.publicKey,
-  //     false,
-  //     TOKEN_PROGRAM_ID,
-  //     ASSOCIATED_TOKEN_PROGRAM_ID
-  //   );
+  it("Withdraws 500 USDC twice", async () => {
+    const userLpTokenAccount = await getAssociatedTokenAddress(
+      lpMintPDA,
+      provider.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
-  //   // Get the starting SOL balance of the vault_info account before deposit
-  //   const vaultBeforeWithdrawBalSOL = await provider.connection.getBalance(
-  //     vaultInfoPDA
-  //   );
+    // Get the starting USDC balance of the vault_info account before deposit
+    const vaultBeforeWithdrawBalUSDC = Number(
+      (
+        await provider.connection.getTokenAccountBalance(
+          depositVaultTokenAccount
+        )
+      ).value.amount
+    );
 
-  //   const userBeforeWithdrawBalSOL = await provider.connection.getBalance(
-  //     provider.publicKey
-  //   );
+    const userBeforeWithdrawBalUSDC = Number(
+      (
+        await provider.connection.getTokenAccountBalance(
+          depositUserTokenAccount
+        )
+      ).value.amount
+    );
 
-  //   // Verify initial balance for vGEM ATA
-  //   const ataBeforeWithdrawBal =
-  //     await provider.connection.getTokenAccountBalance(associatedTokenAccount);
+    // Verify initial balance for LP ATA
+    const userBeforeWithdrawBalLP = Number(
+      (await provider.connection.getTokenAccountBalance(userLpTokenAccount))
+        .value.amount
+    );
 
-  //   console.log(
-  //     `\n----------------
-  // BEFORE withdraw balances
-  // VAULT: ${vaultBeforeWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
-  // USER: ${userBeforeWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
-  // ATA: ${Number(ataBeforeWithdrawBal.value.amount) / LAMPORTS_PER_SOL} vGEM`
-  //   );
+    console.log(
+      `\n----------------
+  BEFORE withdraw balances
+  VAULT USDC: ${vaultBeforeWithdrawBalUSDC / USDC_DECIMALS_MUL}
+  USER USDC: ${userBeforeWithdrawBalUSDC / USDC_DECIMALS_MUL}
+  USER LP: ${userBeforeWithdrawBalLP / USDC_DECIMALS_MUL}`
+    );
 
-  //   const withdrawAmount = new BN(1.5 * LAMPORTS_PER_SOL);
+    const withdrawAmount = new BN(500 * USDC_DECIMALS_MUL);
 
-  //   const signature = await program.methods
-  //     .withdraw(withdrawAmount)
-  //     .accounts({
-  //       vaultInfo: vaultInfoPDA,
-  //       mint: mintPDA,
-  //       burnAta: associatedTokenAccount,
-  //       payer: provider.publicKey,
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     })
-  //     .rpc();
+    const signature = await program.methods
+      .withdraw(withdrawAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
 
-  //   // const tx = await program.methods
-  //   //   .withdraw(withdrawAmount)
-  //   //   .accounts({
-  //   //     vaultInfo: vaultInfoPDA,
-  //   //     mint: mintPDA,
-  //   //     burnAta: associatedTokenAccount,
-  //   //     payer: provider.publicKey,
-  //   //     systemProgram: anchor.web3.SystemProgram.programId,
-  //   //     tokenProgram: TOKEN_PROGRAM_ID,
-  //   //   })
-  //   //   .transaction();
+    // const tx = await program.methods
+    //   .withdraw(withdrawAmount)
+    //   .accounts({
+    //     vaultInfo: vaultInfoPDA,
+    //     depositMint: USDC_MINT,
+    //     depositVaultTokenAccount: depositVaultTokenAccount,
+    //     depositUserTokenAccount: depositUserTokenAccount,
+    //     lpMint: lpMintPDA,
+    //     userLpTokenAccount: userLpTokenAccount,
+    //     payer: provider.publicKey,
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //   })
+    //   .transaction();
 
-  //   // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
-  //   //   .blockhash;
-  //   // tx.recentBlockhash = blockhash;
-  //   // tx.feePayer = provider.wallet.publicKey;
-  //   // provider.wallet.signTransaction(tx);
+    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+    //   .blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = provider.wallet.publicKey;
+    // provider.wallet.signTransaction(tx);
 
-  //   // const signature = await provider.connection.sendRawTransaction(
-  //   //   tx.serialize(),
-  //   //   {
-  //   //     skipPreflight: true,
-  //   //   }
-  //   // );
+    // const signature = await provider.connection.sendRawTransaction(
+    //   tx.serialize(),
+    //   {
+    //     skipPreflight: true,
+    //   }
+    // );
 
-  //   console.log(
-  //     `WITHDRAW_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
-  //   );
+    console.log(
+      `WITHDRAW_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
 
-  //   // Verify the vault_info account holds the correct amount of SOL after the deposit
-  //   const vaultAfterWithdrawBalSOL = await provider.connection.getBalance(
-  //     vaultInfoPDA
-  //   );
+    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    const vaultAfterWithdrawBalUSDC = Number(
+      (
+        await provider.connection.getTokenAccountBalance(
+          depositVaultTokenAccount
+        )
+      ).value.amount
+    );
 
-  //   const userAfterWithdrawBalSOL = await provider.connection.getBalance(
-  //     provider.publicKey
-  //   );
+    const userAfterWithdrawBalUSDC = Number(
+      (
+        await provider.connection.getTokenAccountBalance(
+          depositUserTokenAccount
+        )
+      ).value.amount
+    );
 
-  //   let afterBalanceATA = await provider.connection.getTokenAccountBalance(
-  //     associatedTokenAccount
-  //   );
+    let userAfterWithdrawBalLP = Number(
+      (await provider.connection.getTokenAccountBalance(userLpTokenAccount))
+        .value.amount
+    );
 
-  //   console.log(
-  //     `\n----------------
-  // AFTER 1st withdraw balances
-  // VAULT: ${vaultAfterWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
-  // USER: ${userAfterWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
-  // ATA: ${Number(afterBalanceATA.value.amount) / LAMPORTS_PER_SOL} vGEM`
-  //   );
+    console.log(
+      `\n----------------
+    AFTER 1st withdraw balances
+    VAULT USDC: ${vaultAfterWithdrawBalUSDC / USDC_DECIMALS_MUL} 
+    USER USDC: ${userAfterWithdrawBalUSDC / USDC_DECIMALS_MUL} 
+    USER LP: ${userAfterWithdrawBalLP / USDC_DECIMALS_MUL}`
+    );
 
-  //   // SOL was returned to the user
-  //   assert(
-  //     vaultAfterWithdrawBalSOL ===
-  //       vaultBeforeWithdrawBalSOL - Number(withdrawAmount)
-  //   );
+    // USDC was returned to the user
+    assert(
+      vaultAfterWithdrawBalUSDC ===
+        vaultBeforeWithdrawBalUSDC - Number(withdrawAmount)
+    );
 
-  //   const baseFeeLamports = 5000;
-  //   assert(
-  //     userAfterWithdrawBalSOL ===
-  //       userBeforeWithdrawBalSOL + Number(withdrawAmount) - baseFeeLamports
-  //   );
+    assert(
+      userAfterWithdrawBalUSDC ===
+        userBeforeWithdrawBalUSDC + Number(withdrawAmount)
+    );
 
-  //   // Verify updated balance for vGEM ATA
-  //   assert(
-  //     Number(afterBalanceATA.value.amount) ===
-  //       Number(ataBeforeWithdrawBal.value.amount) - Number(withdrawAmount)
-  //   );
+    // Verify updated balance for LP ATA
+    assert(
+      userAfterWithdrawBalLP ===
+        userBeforeWithdrawBalLP - Number(withdrawAmount)
+    );
 
-  //   // Withdraw the rest
-  //   const signature2 = await program.methods
-  //     .withdraw(withdrawAmount)
-  //     .accounts({
-  //       vaultInfo: vaultInfoPDA,
-  //       mint: mintPDA,
-  //       burnAta: associatedTokenAccount,
-  //       payer: provider.publicKey,
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     })
-  //     .rpc();
+    // Withdraw the rest
+    const signature2 = await program.methods
+      .withdraw(withdrawAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
 
-  //   console.log(
-  //     `WITHDRAW_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
-  //   );
+    console.log(
+      `2nd WITHDRAW_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
 
-  //   // Verify the vault_info account holds the correct amount of SOL after the deposit
-  //   const vaultFinalWithdrawBalSOL = await provider.connection.getBalance(
-  //     vaultInfoPDA
-  //   );
+    // Verify the vault_info account holds the correct amount of SOL after the deposit
+    const vaultFinalWithdrawBalUSDC = Number(
+      (
+        await provider.connection.getTokenAccountBalance(
+          depositVaultTokenAccount
+        )
+      ).value.amount
+    );
 
-  //   const userFinalWithdrawBalSOL = await provider.connection.getBalance(
-  //     provider.publicKey
-  //   );
+    const userFinalWithdrawBalUSDC = Number(
+      (
+        await provider.connection.getTokenAccountBalance(
+          depositUserTokenAccount
+        )
+      ).value.amount
+    );
 
-  //   let finalBalanceATA = await provider.connection.getTokenAccountBalance(
-  //     associatedTokenAccount
-  //   );
+    let userFinalWithdrawBalLP = Number(
+      (await provider.connection.getTokenAccountBalance(userLpTokenAccount))
+        .value.amount
+    );
 
-  //   console.log(
-  //     `\n----------------
-  // AFTER 2nd withdraw balances
-  // VAULT: ${vaultFinalWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
-  // USER: ${userFinalWithdrawBalSOL / LAMPORTS_PER_SOL} SOL
-  // ATA: ${Number(finalBalanceATA.value.amount) / LAMPORTS_PER_SOL} vGEM`
-  //   );
+    console.log(
+      `\n----------------
+    AFTER 2nd withdraw balances
+    VAULT USDC: ${vaultFinalWithdrawBalUSDC / USDC_DECIMALS_MUL} 
+    USER USDC: ${userFinalWithdrawBalUSDC / USDC_DECIMALS_MUL} 
+    USER LP: ${userFinalWithdrawBalLP / USDC_DECIMALS_MUL}`
+    );
 
-  //   // SOL was returned to the user
-  //   assert(
-  //     vaultFinalWithdrawBalSOL ===
-  //       vaultAfterWithdrawBalSOL - Number(withdrawAmount)
-  //   );
+    // USDC was returned to the user
+    assert(
+      vaultFinalWithdrawBalUSDC ===
+        vaultAfterWithdrawBalUSDC - Number(withdrawAmount)
+    );
 
-  //   assert(
-  //     userFinalWithdrawBalSOL ===
-  //       userAfterWithdrawBalSOL + Number(withdrawAmount) - baseFeeLamports
-  //   );
+    assert(
+      userFinalWithdrawBalUSDC ===
+        userAfterWithdrawBalUSDC + Number(withdrawAmount)
+    );
 
-  //   // Verify updated balance for vGEM ATA
-  //   assert(
-  //     Number(finalBalanceATA.value.amount) ===
-  //       Number(afterBalanceATA.value.amount) - Number(withdrawAmount)
-  //   );
-  // });
+    // Verify updated balance for LP ATA
+    assert(
+      userFinalWithdrawBalLP === userAfterWithdrawBalLP - Number(withdrawAmount)
+    );
+  });
 });
 
 /** Setup a custom USDC mint and token account */

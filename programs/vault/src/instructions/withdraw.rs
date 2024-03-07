@@ -1,6 +1,5 @@
 use crate::errors::ErrorCode;
 use crate::state::vault_info::*;
-use crate::util::transfer_lamports;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer};
 
@@ -89,25 +88,16 @@ pub fn handler(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
     );
 
     // Transfer the deposited tokens back to the depositor
-    let transfer_ctx = CpiContext::new(
+    let transfer_ctx = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         Transfer {
             from: ctx.accounts.deposit_vault_token_account.to_account_info(),
             to: ctx.accounts.deposit_user_token_account.to_account_info(),
             authority: ctx.accounts.vault_info.to_account_info(),
         },
+        signer_seeds,
     );
     transfer(transfer_ctx, amount)?;
-
-    // let cpi_context = CpiContext::new_with_signer(
-    //     ctx.accounts.system_program.to_account_info(),
-    //     system_program::Transfer {
-    //         from: ctx.accounts.vault_info.to_account_info(),
-    //         to: ctx.accounts.payer.to_account_info(),
-    //     },
-    //     signer_seeds,
-    // );
-    // system_program::transfer(cpi_context, amount)?;
 
     msg!(
         "Transferred {} tokens back to {} for {}",
