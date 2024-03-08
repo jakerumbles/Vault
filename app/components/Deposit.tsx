@@ -11,20 +11,14 @@ import { BN } from "bn.js";
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  MINT_SIZE,
-  ACCOUNT_SIZE,
 } from "@solana/spl-token";
+import { USDC_MINT, USDC_DECIMALS_MUL } from "@/tokenInfo";
 
 export interface TokenInfo {
   tokenSymbol: string;
   tokenBalance: number | null;
 }
-
-// For localnet right now
-const USDC_MINT = new PublicKey("8p152MEjVBNcvTxHSyJF4UWCBRTxMYz69sUnzC22uJxX");
-const USDC_DECIMALS_MUL = 1000000;
 
 export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
   const [depositAmount, setDepositAmount] = useState("");
@@ -188,12 +182,7 @@ export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
 
   return (
     <div className="flex flex-col m-4 w-56 gap-4">
-      {/* <UserBalance
-        tokenSymbol={tokenInfo.tokenSymbol}
-        tokenBalance={tokenInfo.tokenBalance}
-      /> */}
       <div>
-        {/* <h2>User SOL Balance</h2> */}
         <p>
           {tokenBalance !== null
             ? `${tokenBalance} ${tokenSymbol}`

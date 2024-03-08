@@ -14,6 +14,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { TokenInfo } from "./Deposit";
+import { USDC_MINT, USDC_DECIMALS_MUL } from "@/tokenInfo";
 
 export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -39,39 +40,66 @@ export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
     console.log("Withdrawing", withdrawAmount);
 
     const amountNum = Number(withdrawAmount);
-    const amount = new BN(amountNum * LAMPORTS_PER_SOL);
+    const amount = new BN(amountNum * USDC_DECIMALS_MUL);
     handleTransactionSubmit(amount);
   };
 
   const handleTransactionSubmit = async (amount: any) => {
     let tx = new web3.Transaction();
-    // const buffer = depositData.serialize();
+
     const [vaultInfoPDA, vaultInfoBump] = PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("SOLvault")],
+      [anchor.utils.bytes.utf8.encode("vault"), USDC_MINT.toBuffer()],
       program.programId
     );
 
     // Already created from `initialize` instruction
-    const [mintPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("mint")],
+    const [lpMintPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("lp_mint")],
       program.programId
     );
 
-    // Get the address for the ATA (but it might not existing on the SOL network yet)
-    const associatedTokenAccount = await getAssociatedTokenAddress(
-      mintPDA,
-      provider.publicKey,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
+    // Get the vault's ATA for the supported token
+    // Should already be created from previous deposit
+    const depositVaultTokenAccount = await getAssociatedTokenAddress(
+      USDC_MINT,
+      vaultInfoPDA,
+      true
     );
+
+    // Get the user's ATA for the supported token
+    // Should already be created from previous deposit
+    const depositUserTokenAccount = await getAssociatedTokenAddress(
+      USDC_MINT,
+      provider.publicKey,
+      true
+    );
+
+    // Get the user's ATA for the vault's LP token
+    // Should already be created from previous deposit
+    const userLpTokenAccount = await getAssociatedTokenAddress(
+      lpMintPDA,
+      provider.publicKey,
+      true
+    );
+
+    // // Get the address for the ATA (but it might not existing on the SOL network yet)
+    // const associatedTokenAccount = await getAssociatedTokenAddress(
+    //   mintPDA,
+    //   provider.publicKey,
+    //   false,
+    //   TOKEN_PROGRAM_ID,
+    //   ASSOCIATED_TOKEN_PROGRAM_ID
+    // );
 
     const withdrawIx = await program.methods
       .withdraw(amount)
       .accounts({
         vaultInfo: vaultInfoPDA,
-        mint: mintPDA,
-        burnAta: associatedTokenAccount,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
         payer: provider.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -94,7 +122,6 @@ export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
   return (
     <div className="flex flex-col m-4 w-56 gap-4">
       <div>
-        {/* <h2>User SOL Balance</h2> */}
         <p>
           {tokenBalance !== null
             ? `${tokenBalance} ${tokenSymbol}`
