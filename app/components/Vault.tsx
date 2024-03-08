@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/react";
-import { UserBalance } from "@/components/UserBalance";
 import { Deposit } from "@/components/Deposit";
 import { Withdraw } from "@/components/Withdraw";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";

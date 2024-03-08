@@ -104,7 +104,7 @@ pub fn handler(
 
     create_metadata_accounts_v3(cpi_context, data, true, true, None)?;
 
-    msg!("{} LP token mint created successfully.", params.symbol);
+    msg!("{} LP token mint created successfully at {}", params.symbol, ctx.accounts.lp_mint.key());
 
     let vault_info = &mut ctx.accounts.vault_info;
     vault_info.accepted_token_mint = deposit_mint_key;
@@ -113,9 +113,9 @@ pub fn handler(
     vault_info.is_initialized = true;
 
     msg!(
-        "Vault initialized. Max balance: {} lamports, bump: {}",
+        "Vault initialized. Supported token: {} Max balance: {}",
+        ctx.accounts.deposit_mint.key(),
         max_balance,
-        vault_info.bump
     );
 
     Ok(())

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/react";
-// import { DepositData } from "../models/DepositData";
 import { Address, web3 } from "@coral-xyz/anchor";
 import * as anchor from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
@@ -17,12 +16,15 @@ import {
   MINT_SIZE,
   ACCOUNT_SIZE,
 } from "@solana/spl-token";
-import { UserBalance } from "./UserBalance";
 
 export interface TokenInfo {
   tokenSymbol: string;
   tokenBalance: number | null;
 }
+
+// For localnet right now
+const USDC_MINT = new PublicKey("8p152MEjVBNcvTxHSyJF4UWCBRTxMYz69sUnzC22uJxX");
+const USDC_DECIMALS_MUL = 1000000;
 
 export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
   const [depositAmount, setDepositAmount] = useState("");
@@ -53,57 +55,116 @@ export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
     console.log("Depositing", depositAmount);
 
     const amountNum = Number(depositAmount);
-    const amount = new BN(amountNum * LAMPORTS_PER_SOL);
+    const amount = new BN(amountNum * USDC_DECIMALS_MUL);
     handleTransactionSubmit(amount);
   };
 
-  const handleTransactionSubmit = async (amount: any) => {
+  const handleTransactionSubmit = async (amount: anchor.BN) => {
     let tx = new web3.Transaction();
-    // const buffer = depositData.serialize();
+
+    // const [vaultInfoPDA, vaultInfoBump] = PublicKey.findProgramAddressSync(
+    //   [anchor.utils.bytes.utf8.encode("SOLvault")],
+    //   program.programId
+    // );
+
     const [vaultInfoPDA, vaultInfoBump] = PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("SOLvault")],
+      [anchor.utils.bytes.utf8.encode("vault"), USDC_MINT.toBuffer()],
       program.programId
     );
 
     // Already created from `initialize` instruction
-    const [mintPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("mint")],
+    const [lpMintPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("lp_mint")],
       program.programId
     );
 
-    // Get the address for the ATA (but it might not existing on the SOL network yet)
-    const associatedTokenAccount = await getAssociatedTokenAddress(
-      mintPDA,
+    // Get the vault's ATA for the supported token
+    const depositVaultTokenAccount = await getAssociatedTokenAddress(
+      USDC_MINT,
+      vaultInfoPDA,
+      true
+    );
+
+    let vaultUsdcAtaExists = await provider.connection.getAccountInfo(
+      depositVaultTokenAccount
+    );
+
+    if (!vaultUsdcAtaExists) {
+      console.log(
+        "Creating depositVaultTokenAccount account ",
+        depositVaultTokenAccount.toBase58()
+      );
+      let createVaultUsdcAtaIx = createAssociatedTokenAccountInstruction(
+        provider.publicKey,
+        depositVaultTokenAccount,
+        vaultInfoPDA,
+        USDC_MINT
+      );
+
+      tx.add(createVaultUsdcAtaIx);
+    }
+
+    // Get the user's ATA for the supported token
+    const depositUserTokenAccount = await getAssociatedTokenAddress(
+      USDC_MINT,
       provider.publicKey,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
+      true
+    );
+
+    let userUsdcAtaExists = await provider.connection.getAccountInfo(
+      depositUserTokenAccount
+    );
+    if (!userUsdcAtaExists) {
+      console.log(
+        "Creating depositUserTokenAccount account ",
+        depositUserTokenAccount.toBase58()
+      );
+      let createUserUsdcAtaIx = createAssociatedTokenAccountInstruction(
+        provider.publicKey,
+        depositUserTokenAccount,
+        provider.publicKey,
+        USDC_MINT
+      );
+      tx.add(createUserUsdcAtaIx);
+    }
+
+    // Get the user's ATA for the vault's LP token
+    const userLpTokenAccount = await getAssociatedTokenAddress(
+      lpMintPDA,
+      provider.publicKey,
+      true
     );
 
     // Check if the ATA has already aleady exists
-    const ataAccount = await connection.getAccountInfo(associatedTokenAccount);
+    const userLpAtaExists = await connection.getAccountInfo(userLpTokenAccount);
 
     // If the ATA doesn't exist, create it
-    if (!ataAccount) {
-      console.error("ATA not found, so now creating it");
-
-      // Create the ATA account that is associated with our mint on our anchor wallet
-      const createATAIx = createAssociatedTokenAccountInstruction(
-        provider.publicKey,
-        associatedTokenAccount,
-        provider.publicKey,
-        mintPDA
+    if (!userLpAtaExists) {
+      console.log(
+        "Creating userLpTokenAccount account ",
+        userLpTokenAccount.toBase58()
       );
 
-      tx.add(createATAIx);
+      // Create the ATA account that is associated with our mint on our anchor wallet
+      const createUserLpAtaIx = createAssociatedTokenAccountInstruction(
+        provider.publicKey,
+        userLpTokenAccount,
+        provider.publicKey,
+        lpMintPDA
+      );
+
+      tx.add(createUserLpAtaIx);
     }
 
     const depositIx = await program.methods
-      .depositSol(amount)
+      .deposit(amount)
       .accounts({
         vaultInfo: vaultInfoPDA,
-        mint: mintPDA,
-        destination: associatedTokenAccount,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
         payer: provider.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -111,6 +172,8 @@ export const Deposit = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
       .instruction();
 
     tx.add(depositIx);
+
+    console.log("Instructions", tx.instructions);
 
     // Sign and send the transaction
     const signature = await provider.sendAndConfirm(tx);

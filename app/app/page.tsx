@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/react";
-import { UserBalance } from "@/components/UserBalance";
 import { Deposit } from "@/components/Deposit";
 import { Withdraw } from "@/components/Withdraw";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -11,18 +10,21 @@ import { GetProgramAccountsFilter, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Vault } from "@/components/Vault";
 
+// LOCALNET mapping of token mint addresses to token symbols
 const tokenMap: Record<string, string> = {
-  "6DHrgSeVhRF2HaNATZX6HUAuzwd6t4HQMUDWv1DcyRAP": "vGEM",
+  "4sp6vnqHvteug8LWivkt1kt2MBYPXnEwXDC4kHynCXFm": "vGEM",
+  "8p152MEjVBNcvTxHSyJF4UWCBRTxMYz69sUnzC22uJxX": "USDC",
 };
 
-const supportedSplTokens = ["vGEM"];
+const supportedSplTokens = ["USDC", "vGEM"];
 
 export default function Page() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
 
   const [balances, setBalances] = useState<{ [key: string]: number | null }>({
-    SOL: null,
+    USDC: null,
+    vGEM: 0,
   });
 
   useEffect(() => {
@@ -30,28 +32,29 @@ export default function Page() {
       return;
     }
 
-    fetchSolBalance();
+    // fetchSolBalance();
 
-    // Ensure the balance updates after the transaction completes
-    connection.onAccountChange(
-      publicKey,
-      (updatedAccountInfo) => {
-        console.log(
-          "Account SOL updated:",
-          updatedAccountInfo.lamports / LAMPORTS_PER_SOL
-        );
-        setBalances((balances) => ({
-          ...balances,
-          SOL: updatedAccountInfo.lamports / LAMPORTS_PER_SOL,
-        }));
-      },
-      "confirmed"
-    );
+    // // Ensure the balance updates after the transaction completes
+    // connection.onAccountChange(
+    //   publicKey,
+    //   (updatedAccountInfo) => {
+    //     console.log(
+    //       "Account SOL updated:",
+    //       updatedAccountInfo.lamports / LAMPORTS_PER_SOL
+    //     );
+    //     setBalances((balances) => ({
+    //       ...balances,
+    //       SOL: updatedAccountInfo.lamports / LAMPORTS_PER_SOL,
+    //     }));
+    //   },
+    //   "confirmed"
+    // );
 
     getTokenAccounts();
   }, [connection, publicKey]);
 
   const getTokenAccounts = async () => {
+    console.log("Fetching token accounts...");
     if (!publicKey) {
       return;
     }
@@ -73,6 +76,8 @@ export default function Page() {
       { filters: filters }
     );
 
+    console.log("Fetched token accounts:", accounts);
+
     accounts.forEach((account, i) => {
       const parsedAccountInfo: any = account.account.data;
       const mintAddress: string = parsedAccountInfo["parsed"]["info"]["mint"];
@@ -84,11 +89,16 @@ export default function Page() {
       console.log(`--Token Mint: ${mintAddress}`);
       console.log(`--Token Balance: ${tokenBalance}`);
 
+      console.log("Supported token name: ", tokenMap[mintAddress]);
+
       if (supportedSplTokens.includes(tokenMap[mintAddress])) {
+        console.log(`Supported token: ${tokenMap[mintAddress]}`);
         setBalances((balances) => ({
           ...balances,
           [tokenMap[mintAddress]]: tokenBalance,
         }));
+
+        console.log(`Updated ${tokenMap[mintAddress]} balance:`, tokenBalance);
 
         // Ensure the balance updates for supported SPL tokens the account holds after the transaction completes
         connection.onAccountChange(ataAddress, (updatedAccountInfo) => {
@@ -131,8 +141,8 @@ export default function Page() {
   return (
     <div className="container mx-auto">
       <Vault
-        depositTokenSymbol="SOL"
-        depositTokenBalance={balances["SOL"]}
+        depositTokenSymbol="USDC"
+        depositTokenBalance={balances["USDC"]}
         withdrawTokenSymbol="vGEM"
         withdrawTokenBalance={balances["vGEM"]}
       />

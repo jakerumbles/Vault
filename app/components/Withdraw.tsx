@@ -13,7 +13,6 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { UserBalance } from "./UserBalance";
 import { TokenInfo } from "./Deposit";
 
 export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {

@@ -3,7 +3,7 @@ export type Vault = {
   "name": "vault",
   "instructions": [
     {
-      "name": "initialize",
+      "name": "initializeVault",
       "docs": [
         "Initializes a new vault and sets the vault configuration.",
         "`max_balance` is expected to be in lamports.",
@@ -21,12 +21,22 @@ export type Vault = {
           "isSigner": false
         },
         {
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositVaultTokenAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "payer",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "mint",
+          "name": "lpMint",
           "isMut": true,
           "isSigner": false
         },
@@ -65,7 +75,7 @@ export type Vault = {
       ]
     },
     {
-      "name": "depositSol",
+      "name": "deposit",
       "docs": [
         "Deposits SOL into the vault and mints LP tokens to the depositor.",
         "TODO: Make sure decimals are handled with `amount`"
@@ -77,12 +87,27 @@ export type Vault = {
           "isSigner": false
         },
         {
-          "name": "mint",
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositVaultTokenAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "destination",
+          "name": "depositUserTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userLpTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -121,12 +146,27 @@ export type Vault = {
           "isSigner": false
         },
         {
-          "name": "mint",
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositVaultTokenAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "burnAta",
+          "name": "depositUserTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userLpTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -160,6 +200,10 @@ export type Vault = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "acceptedTokenMint",
+            "type": "publicKey"
+          },
           {
             "name": "maxBalance",
             "type": "u64"
@@ -231,7 +275,7 @@ export const IDL: Vault = {
   "name": "vault",
   "instructions": [
     {
-      "name": "initialize",
+      "name": "initializeVault",
       "docs": [
         "Initializes a new vault and sets the vault configuration.",
         "`max_balance` is expected to be in lamports.",
@@ -249,12 +293,22 @@ export const IDL: Vault = {
           "isSigner": false
         },
         {
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositVaultTokenAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "payer",
           "isMut": true,
           "isSigner": true
         },
         {
-          "name": "mint",
+          "name": "lpMint",
           "isMut": true,
           "isSigner": false
         },
@@ -293,7 +347,7 @@ export const IDL: Vault = {
       ]
     },
     {
-      "name": "depositSol",
+      "name": "deposit",
       "docs": [
         "Deposits SOL into the vault and mints LP tokens to the depositor.",
         "TODO: Make sure decimals are handled with `amount`"
@@ -305,12 +359,27 @@ export const IDL: Vault = {
           "isSigner": false
         },
         {
-          "name": "mint",
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositVaultTokenAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "destination",
+          "name": "depositUserTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userLpTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -349,12 +418,27 @@ export const IDL: Vault = {
           "isSigner": false
         },
         {
-          "name": "mint",
+          "name": "depositMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "depositVaultTokenAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "burnAta",
+          "name": "depositUserTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userLpTokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -388,6 +472,10 @@ export const IDL: Vault = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "acceptedTokenMint",
+            "type": "publicKey"
+          },
           {
             "name": "maxBalance",
             "type": "u64"
