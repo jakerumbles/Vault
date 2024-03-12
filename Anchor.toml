@@ -5,22 +5,32 @@ seeds = false
 skip-lint = false
 
 # [programs.devnet]
-# vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
+# vault = "FqW6Qr48BzG7uNZ9p16jUFtuDdDwQM2zwWCXq2gYokki"
 
 [programs.localnet]
-vault = "7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn"
+vault = "FqW6Qr48BzG7uNZ9p16jUFtuDdDwQM2zwWCXq2gYokki"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/Users/jake/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+initialize_vault = "ts-node scripts/initialize_vault.ts"
 
-[test.validator]
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false
+
 [[test.genesis]]
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 program = "/Users/jake/Github/mpl-token-metadata/programs/.bin/token_metadata.so"
+
+[test.validator]
+bind_address = "0.0.0.0"
+ledger = ".anchor/test-ledger"
+rpc_port = 8899

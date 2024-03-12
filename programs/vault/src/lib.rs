@@ -7,7 +7,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use state::InitTokenParams;
 
-declare_id!("7JCk8GRuxk8KfE6ttP7qx3QdGPDCKKvHyQHuJmHZCAn");
+declare_id!("FqW6Qr48BzG7uNZ9p16jUFtuDdDwQM2zwWCXq2gYokki");
 
 #[program]
 pub mod vault {
