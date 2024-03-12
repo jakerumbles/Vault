@@ -30,7 +30,7 @@ pub struct Deposit<'info> {
     pub deposit_user_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        seeds = [b"lp_mint"],
+        seeds = [b"lp_mint", deposit_mint.key().as_ref()],
         bump,
         mint::authority = vault_info,
     )]

@@ -12,11 +12,12 @@ import { Vault } from "@/components/Vault";
 
 // LOCALNET mapping of token mint addresses to token symbols
 const tokenMap: Record<string, string> = {
-  "4sp6vnqHvteug8LWivkt1kt2MBYPXnEwXDC4kHynCXFm": "vGEM",
   "8p152MEjVBNcvTxHSyJF4UWCBRTxMYz69sUnzC22uJxX": "USDC",
+  "4sp6vnqHvteug8LWivkt1kt2MBYPXnEwXDC4kHynCXFm": "vGEM",
+  "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr": "USDT",
 };
 
-const supportedSplTokens = ["USDC", "vGEM"];
+const supportedSplTokens = ["USDC", "vGEM", "USDT", "vUSDT"];
 
 export default function Page() {
   const { connection } = useConnection();
@@ -139,13 +140,23 @@ export default function Page() {
   };
 
   return (
-    <div className="container mx-auto">
-      <Vault
-        depositTokenSymbol="USDC"
-        depositTokenBalance={balances["USDC"]}
-        withdrawTokenSymbol="vGEM"
-        withdrawTokenBalance={balances["vGEM"]}
-      />
+    <div className="container mx-auto max-w-4xl">
+      <div className="bg-stone-700 rounded-lg m-8">
+        <Vault
+          depositTokenSymbol="USDC"
+          depositTokenBalance={balances["USDC"]}
+          withdrawTokenSymbol="vGEM"
+          withdrawTokenBalance={balances["vGEM"]}
+        />
+      </div>
+      <div className="bg-stone-700 rounded-lg m-8">
+        <Vault
+          depositTokenSymbol="DUMMY"
+          depositTokenBalance={balances["DUMMY"]}
+          withdrawTokenSymbol="vDUMMY"
+          withdrawTokenBalance={balances["vDUMMY"]}
+        />
+      </div>
     </div>
   );
 }

@@ -126,7 +126,7 @@ describe("USDC vault", () => {
     }
 
     [lpMintPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("lp_mint")],
+      [Buffer.from("lp_mint"), USDC_MINT.toBuffer()],
       program.programId
     );
 
@@ -200,151 +200,151 @@ describe("USDC vault", () => {
     );
   });
 
-  // it("Deposits 500 USDC twice", async () => {
-  //   // Get the starting USDC balance of the vault_info account before deposit
-  //   const beforeDepositBalance = (
-  //     await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
-  //   ).value.uiAmount;
-  //   console.log(`Before deposit balance: ${beforeDepositBalance}`);
+  it("Deposits 500 USDC twice", async () => {
+    // Get the starting USDC balance of the vault_info account before deposit
+    const beforeDepositBalance = (
+      await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
+    ).value.uiAmount;
+    console.log(`Before deposit balance: ${beforeDepositBalance}`);
 
-  //   // Get the ATA address for the vaults LP token (but it might not existing on the SOL network yet)
-  //   const userLpTokenAccount = await getAssociatedTokenAddress(
-  //     lpMintPDA,
-  //     provider.publicKey,
-  //     false,
-  //     TOKEN_PROGRAM_ID,
-  //     ASSOCIATED_TOKEN_PROGRAM_ID
-  //   );
+    // Get the ATA address for the vaults LP token (but it might not existing on the SOL network yet)
+    const userLpTokenAccount = await getAssociatedTokenAddress(
+      lpMintPDA,
+      provider.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
-  //   const createATA = new anchor.web3.Transaction().add(
-  //     // Create the ATA account that is associated with our mint on our anchor wallet
-  //     createAssociatedTokenAccountInstruction(
-  //       provider.publicKey,
-  //       userLpTokenAccount,
-  //       provider.publicKey,
-  //       lpMintPDA
-  //     )
-  //   );
+    const createATA = new anchor.web3.Transaction().add(
+      // Create the ATA account that is associated with our mint on our anchor wallet
+      createAssociatedTokenAccountInstruction(
+        provider.publicKey,
+        userLpTokenAccount,
+        provider.publicKey,
+        lpMintPDA
+      )
+    );
 
-  //   const res = await provider.sendAndConfirm(createATA);
-  //   console.log(
-  //     `CREATEATA transaction: https://explorer.solana.com/tx/${res}?cluster=custom`
-  //   );
+    const res = await provider.sendAndConfirm(createATA);
+    console.log(
+      `CREATEATA transaction: https://explorer.solana.com/tx/${res}?cluster=custom`
+    );
 
-  //   // Verify 0 balance for new vGEM ATA
-  //   const balance = await provider.connection.getTokenAccountBalance(
-  //     userLpTokenAccount
-  //   );
-  //   assert(Number(balance.value.amount) === 0);
+    // Verify 0 balance for new vGEM ATA
+    const balance = await provider.connection.getTokenAccountBalance(
+      userLpTokenAccount
+    );
+    assert(Number(balance.value.amount) === 0);
 
-  //   const depositAmount = new BN(500 * USDC_DECIMALS_MUL);
+    const depositAmount = new BN(500 * USDC_DECIMALS_MUL);
 
-  //   const signature = await program.methods
-  //     .deposit(depositAmount)
-  //     .accounts({
-  //       vaultInfo: vaultInfoPDA,
-  //       depositMint: USDC_MINT,
-  //       depositVaultTokenAccount: depositVaultTokenAccount,
-  //       depositUserTokenAccount: depositUserTokenAccount,
-  //       lpMint: lpMintPDA,
-  //       userLpTokenAccount: userLpTokenAccount,
-  //       payer: provider.publicKey,
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     })
-  //     .rpc();
+    const signature = await program.methods
+      .deposit(depositAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
 
-  //   // const tx = await program.methods
-  //   //   .deposit(depositAmount)
-  //   //   .accounts({
-  //   //     vaultInfo: vaultInfoPDA,
-  //   //     depositMint: USDC_MINT,
-  //   //     depositVaultTokenAccount: depositVaultTokenAccount,
-  //   //     depositUserTokenAccount: depositUserTokenAccount,
-  //   //     lpMint: lpMintPDA,
-  //   //     userLpTokenAccount: userLpTokenAccount,
-  //   //     payer: provider.publicKey,
-  //   //     systemProgram: anchor.web3.SystemProgram.programId,
-  //   //     tokenProgram: TOKEN_PROGRAM_ID,
-  //   //   })
-  //   //   .transaction();
+    // const tx = await program.methods
+    //   .deposit(depositAmount)
+    //   .accounts({
+    //     vaultInfo: vaultInfoPDA,
+    //     depositMint: USDC_MINT,
+    //     depositVaultTokenAccount: depositVaultTokenAccount,
+    //     depositUserTokenAccount: depositUserTokenAccount,
+    //     lpMint: lpMintPDA,
+    //     userLpTokenAccount: userLpTokenAccount,
+    //     payer: provider.publicKey,
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //   })
+    //   .transaction();
 
-  //   // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
-  //   //   .blockhash;
-  //   // tx.recentBlockhash = blockhash;
-  //   // tx.feePayer = provider.publicKey;
-  //   // provider.wallet.signTransaction(tx);
+    // let blockhash = (await provider.connection.getLatestBlockhash("finalized"))
+    //   .blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = provider.publicKey;
+    // provider.wallet.signTransaction(tx);
 
-  //   // const signature = await provider.connection.sendRawTransaction(
-  //   //   tx.serialize(),
-  //   //   {
-  //   //     skipPreflight: true,
-  //   //   }
-  //   // );
+    // const signature = await provider.connection.sendRawTransaction(
+    //   tx.serialize(),
+    //   {
+    //     skipPreflight: true,
+    //   }
+    // );
 
-  //   console.log(
-  //     `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
-  //   );
+    console.log(
+      `DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
 
-  //   // Verify the vault_info account holds the correct amount of USDC after the deposit
-  //   const afterDepositBalUsdc = (
-  //     await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
-  //   ).value.amount;
+    // Verify the vault_info account holds the correct amount of USDC after the deposit
+    const afterDepositBalUsdc = (
+      await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
+    ).value.amount;
 
-  //   console.log(
-  //     `VAULT After deposit balance for ${vaultInfoPDA.toBase58()}: ${afterDepositBalUsdc} USDC`
-  //   );
+    console.log(
+      `VAULT After deposit balance for ${vaultInfoPDA.toBase58()}: ${afterDepositBalUsdc} USDC`
+    );
 
-  //   assert(
-  //     Number(afterDepositBalUsdc) ===
-  //       beforeDepositBalance + Number(depositAmount)
-  //   );
+    assert(
+      Number(afterDepositBalUsdc) ===
+        beforeDepositBalance + Number(depositAmount)
+    );
 
-  //   // Verify updated balance for vGEM ATA
-  //   const afterBalanceATA = await provider.connection.getTokenAccountBalance(
-  //     userLpTokenAccount
-  //   );
-  //   assert(Number(afterBalanceATA.value.amount) === Number(depositAmount));
+    // Verify updated balance for vGEM ATA
+    const afterBalanceATA = await provider.connection.getTokenAccountBalance(
+      userLpTokenAccount
+    );
+    assert(Number(afterBalanceATA.value.amount) === Number(depositAmount));
 
-  //   // Deposit a 2nd time
-  //   const signature2 = await program.methods
-  //     .deposit(depositAmount)
-  //     .accounts({
-  //       vaultInfo: vaultInfoPDA,
-  //       depositMint: USDC_MINT,
-  //       depositVaultTokenAccount: depositVaultTokenAccount,
-  //       depositUserTokenAccount: depositUserTokenAccount,
-  //       lpMint: lpMintPDA,
-  //       userLpTokenAccount: userLpTokenAccount,
-  //       payer: provider.publicKey,
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     })
-  //     .rpc();
+    // Deposit a 2nd time
+    const signature2 = await program.methods
+      .deposit(depositAmount)
+      .accounts({
+        vaultInfo: vaultInfoPDA,
+        depositMint: USDC_MINT,
+        depositVaultTokenAccount: depositVaultTokenAccount,
+        depositUserTokenAccount: depositUserTokenAccount,
+        lpMint: lpMintPDA,
+        userLpTokenAccount: userLpTokenAccount,
+        payer: provider.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
 
-  //   console.log(
-  //     `#2 DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
-  //   );
+    console.log(
+      `#2 DEPOSIT_SOL transaction: https://explorer.solana.com/tx/${signature}?cluster=custom`
+    );
 
-  //   // Verify the Vault USDC account holds the correct amount of USDC after the deposit
-  //   const finalDepositBalUSDC = (
-  //     await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
-  //   ).value.amount;
+    // Verify the Vault USDC account holds the correct amount of USDC after the deposit
+    const finalDepositBalUSDC = (
+      await provider.connection.getTokenAccountBalance(depositVaultTokenAccount)
+    ).value.amount;
 
-  //   assert(
-  //     Number(finalDepositBalUSDC) ===
-  //       Number(afterDepositBalUsdc) + Number(depositAmount)
-  //   );
+    assert(
+      Number(finalDepositBalUSDC) ===
+        Number(afterDepositBalUsdc) + Number(depositAmount)
+    );
 
-  //   // Verify final balance for vGEM ATA
-  //   const finalBalanceATA = await provider.connection.getTokenAccountBalance(
-  //     userLpTokenAccount
-  //   );
-  //   assert(
-  //     Number(finalBalanceATA.value.amount) ===
-  //       Number(afterBalanceATA.value.amount) + Number(depositAmount)
-  //   );
-  // });
+    // Verify final balance for vGEM ATA
+    const finalBalanceATA = await provider.connection.getTokenAccountBalance(
+      userLpTokenAccount
+    );
+    assert(
+      Number(finalBalanceATA.value.amount) ===
+        Number(afterBalanceATA.value.amount) + Number(depositAmount)
+    );
+  });
 
   it("Withdraws 500 USDC twice", async () => {
     const userLpTokenAccount = await getAssociatedTokenAddress(

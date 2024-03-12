@@ -44,7 +44,7 @@ pub struct InitializeVault<'info> {
     // Same PDA as address of the account and mint/freeze authority
     #[account(
         init,
-        seeds = [b"lp_mint"],
+        seeds = [b"lp_mint", deposit_mint.key().as_ref()],
         bump,
         payer = payer,
         mint::decimals = params.decimals,
