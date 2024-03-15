@@ -4,8 +4,8 @@
 seeds = false
 skip-lint = false
 
-# [programs.devnet]
-# vault = "FqW6Qr48BzG7uNZ9p16jUFtuDdDwQM2zwWCXq2gYokki"
+[programs.devnet]
+vault = "FqW6Qr48BzG7uNZ9p16jUFtuDdDwQM2zwWCXq2gYokki"
 
 [programs.localnet]
 vault = "FqW6Qr48BzG7uNZ9p16jUFtuDdDwQM2zwWCXq2gYokki"

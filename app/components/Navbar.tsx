@@ -5,6 +5,7 @@ import {
   NavbarContent,
   NavbarItem,
 } from "@nextui-org/navbar";
+import Link from "next/link";
 import { Tooltip } from "@nextui-org/tooltip";
 import Image from "next/image";
 // import SolanaLogo from "../public/solanaLogo.svg";
@@ -17,6 +18,9 @@ export function NavBar() {
       <NavbarBrand>
         <Image src={GemsDAOLogo} alt="Gems DAO Logo" width={100} />
       </NavbarBrand>
+      {/* <NavbarItem >Vault</NavbarItem> */}
+      <Link href="/vault">Vault</Link>
+      <Link href="/marketplace">Marketplace</Link>
       <NavbarContent justify="end">
         <Tooltip content="Devnet Only">
           <NavbarItem>
