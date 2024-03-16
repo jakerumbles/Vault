@@ -1,14 +1,35 @@
 import * as borsh from "@coral-xyz/borsh";
+import { PublicKey } from "@solana/web3.js";
 
-export class DepositData {
-  amount: number;
+export class PerpsPool {
+  name: string;
+  custodies: PublicKey[]; // Array of publicKey strings
+  ratios: TokenRatio[];
+  aumUsd: bigint; // u128
+  bump: number; // u8
+  lpTokenBump: number; // u8
+  inceptionTime: bigint; // i64
 
-  constructor(amount: number) {
-    this.amount = amount;
+  constructor(
+    name: number,
+    custodies: PublicKey[],
+    ratios: TokenRatio[],
+    aumUsd: bigint,
+    bump: number,
+    lpTokenBump: number,
+    inceptionTime: bigint
+  ) {
+    this.name = name;
+    this.custodies = custodies;
+    this.ratios = ratios;
+    this.aumUsd = aumUsd;
+    this.bump = bump;
+    this.lpTokenBump = lpTokenBump;
+    this.inceptionTime = inceptionTime;
   }
 
   borshInstructionSchema = borsh.struct([
-    borsh.u8("variant"),
+    borsh.str("name"),
     borsh.u64("amount"),
   ]);
 

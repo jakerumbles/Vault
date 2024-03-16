@@ -119,6 +119,20 @@ export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
     setWithdrawAmount("");
   };
 
+  const fetchTest = async () => {
+    console.log("Testing fetch...");
+
+    const [vaultInfoPDA, vaultInfoBump] = PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("vault"), USDC_MINT.toBuffer()],
+      program.programId
+    );
+
+    console.log("Vault info PDA: ", vaultInfoPDA.toBase58());
+
+    const vaultInfo = await program.account.vaultInfo.fetch(vaultInfoPDA);
+    console.log("Vault info: ", vaultInfo.acceptedTokenMint.toBase58());
+  };
+
   return (
     <div className="flex flex-col m-4 w-56 gap-4">
       <div>
@@ -139,6 +153,9 @@ export const Withdraw = ({ tokenSymbol, tokenBalance }: TokenInfo) => {
           Withdraw{" "}
           <span style={{ fontSize: "74%", fontWeight: 250 }}>get SOL</span>
         </span>
+      </Button>
+      <Button color="danger" onPress={fetchTest}>
+        Test fetch
       </Button>
     </div>
   );

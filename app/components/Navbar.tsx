@@ -21,6 +21,7 @@ export function NavBar() {
       {/* <NavbarItem >Vault</NavbarItem> */}
       <Link href="/vault">Vault</Link>
       <Link href="/marketplace">Marketplace</Link>
+      <Link href="/perps">Perps</Link>
       <NavbarContent justify="end">
         <Tooltip content="Devnet Only">
           <NavbarItem>
